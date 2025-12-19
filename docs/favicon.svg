@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="빙고 러닝">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#7dd3fc" />
+      <stop offset="1" stop-color="#a78bfa" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="48" height="48" rx="14" fill="url(#g)" />
+  <g fill="rgba(2,6,23,.92)">
+    <rect x="18" y="18" width="8" height="8" rx="2" />
+    <rect x="28" y="18" width="8" height="8" rx="2" />
+    <rect x="38" y="18" width="8" height="8" rx="2" />
+    <rect x="18" y="28" width="8" height="8" rx="2" />
+    <rect x="28" y="28" width="8" height="8" rx="2" />
+    <rect x="38" y="28" width="8" height="8" rx="2" />
+    <rect x="18" y="38" width="8" height="8" rx="2" />
+    <rect x="28" y="38" width="8" height="8" rx="2" />
+    <rect x="38" y="38" width="8" height="8" rx="2" />
+  </g>
+</svg>
+

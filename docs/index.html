@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>퍼즐형 빙고 러닝 (Winter 4-Week)</title>
+    <meta
+      name="description"
+      content="퍼즐형 빙고 러닝: 규칙/카드/운영 가이드 문서를 한 곳에서 보기 쉽게 정리한 안내 페이지"
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#content">본문으로</a>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <a class="brand__title" href="#intro">퍼즐형 빙고 러닝</a>
+          <span class="brand__subtitle">Winter 4-Week</span>
+        </div>
+
+        <nav class="nav" aria-label="문서">
+          <a class="nav__link" href="#intro" data-page="intro">소개</a>
+          <a class="nav__link" href="#rulebook" data-page="rulebook">룰북</a>
+          <a class="nav__link" href="#carddeck" data-page="carddeck">카드 덱</a>
+          <a class="nav__link" href="#formanager" data-page="formanager">운영진</a>
+        </nav>
+
+        <div class="topbar__actions">
+          <button class="btn btn--ghost" id="themeToggle" type="button" aria-label="테마 변경">
+            테마
+          </button>
+          <a class="btn" id="githubLink" href="#" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout" id="content">
+      <aside class="side">
+        <section class="card">
+          <h2 class="card__title">Quick Start</h2>
+          <ol class="steps">
+            <li>25장 선택: A10 / B7 / C5 / D2 / W1</li>
+            <li>배치: 중앙 W, C 인접 금지, D 모서리 금지</li>
+            <li>러닝 1회당 최대 3칸 (A/B/C 각 1칸)</li>
+            <li>중앙 W 달성 → Wild 토큰 1개</li>
+          </ol>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">주의</h2>
+          <ul class="compact">
+            <li>안전 우선: 위험하면 미션 생략/대체</li>
+            <li>카드 덱은 운영진용(선택 종료 후 공개 권장)</li>
+          </ul>
+        </section>
+      </aside>
+
+      <article class="doc">
+        <header class="doc__header">
+          <h1 class="doc__title" id="docTitle">문서</h1>
+          <p class="doc__meta" id="docMeta"></p>
+        </header>
+
+        <div class="doc__toolbar">
+          <input
+            class="search"
+            id="searchInput"
+            type="search"
+            placeholder="이 페이지에서 찾기 (Ctrl/⌘+F도 가능)"
+            autocomplete="off"
+          />
+          <button class="btn btn--ghost" id="copyLink" type="button">링크 복사</button>
+        </div>
+
+        <div class="markdown" id="docBody" aria-live="polite"></div>
+      </article>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <span>© MRC Binggo 2025W</span>
+        <span class="footer__sep">·</span>
+        <a class="footer__link" href="#intro">처음으로</a>
+      </div>
+    </footer>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
+

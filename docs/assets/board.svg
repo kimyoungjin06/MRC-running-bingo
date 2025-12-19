@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 660" role="img" aria-label="빙고판 예시">
+  <style>
+    .cell {
+      width: 100px;
+      height: 100px;
+      rx: 14;
+      ry: 14;
+      stroke: rgba(255, 255, 255, 0.14);
+      stroke-width: 2;
+    }
+    .label {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      fill: rgba(226, 232, 240, 0.82);
+    }
+  </style>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020" />
+      <stop offset="1" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+  <rect width="660" height="660" rx="26" fill="url(#bg)" />
+  <text x="32" y="48" fill="#e2e8f0" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" letter-spacing="-0.02em">
+    빙고판 예시 (중앙 W, C 인접 금지, D 모서리 금지)
+  </text>
+
+  <g transform="translate(40 80)">
+    <!-- Row 1 -->
+    <g transform="translate(0 0)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" x="0" y="0" />
+      <text class="label" x="20" y="45" fill="#7dd3fc">A03</text>
+      <text class="sub" x="20" y="70">Base ★★★</text>
+    </g>
+    <g transform="translate(110 0)">
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="45" fill="#34d399">B07</text>
+      <text class="sub" x="22" y="70">Condition ★★</text>
+    </g>
+    <g transform="translate(220 0)">
+      <rect class="cell" fill="rgba(251,191,36,0.16)" />
+      <text class="label" x="22" y="45" fill="#fbbf24">C02</text>
+      <text class="sub" x="22" y="70">Co-op ★★★</text>
+    </g>
+    <g transform="translate(330 0)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A11</text>
+      <text class="sub" x="22" y="70">Base ★★</text>
+    </g>
+    <g transform="translate(440 0)">
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="45" fill="#34d399">B01</text>
+      <text class="sub" x="22" y="70">Condition ★</text>
+    </g>
+
+    <!-- Row 2 -->
+    <g transform="translate(0 110)">
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="45" fill="#34d399">B09</text>
+      <text class="sub" x="22" y="70">Condition ★</text>
+    </g>
+    <g transform="translate(110 110)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A07</text>
+      <text class="sub" x="22" y="70">Base ★</text>
+    </g>
+    <g transform="translate(220 110)">
+      <rect class="cell" fill="rgba(251,191,36,0.16)" />
+      <text class="label" x="22" y="45" fill="#fbbf24">C07</text>
+      <text class="sub" x="22" y="70">Co-op ★★</text>
+    </g>
+    <g transform="translate(330 110)">
+      <rect class="cell" fill="rgba(248,113,113,0.16)" />
+      <text class="label" x="22" y="45" fill="#f87171">D01</text>
+      <text class="sub" x="22" y="70">Marathon ★★★</text>
+    </g>
+    <g transform="translate(440 110)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A10</text>
+      <text class="sub" x="22" y="70">Base ★</text>
+    </g>
+
+    <!-- Row 3 -->
+    <g transform="translate(0 220)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A05</text>
+      <text class="sub" x="22" y="70">Base ★★★</text>
+    </g>
+    <g transform="translate(110 220)">
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="45" fill="#34d399">B03</text>
+      <text class="sub" x="22" y="70">Condition ★★</text>
+    </g>
+    <g transform="translate(220 220)">
+      <rect class="cell" fill="rgba(167,139,250,0.22)" stroke="rgba(167,139,250,0.9)" stroke-width="3" />
+      <text class="label" x="50" y="52" fill="#c4b5fd" text-anchor="middle">W</text>
+      <text class="sub" x="50" y="72" text-anchor="middle">Wild 중앙</text>
+    </g>
+    <g transform="translate(330 220)">
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="45" fill="#34d399">B06</text>
+      <text class="sub" x="22" y="70">Condition ★★★</text>
+    </g>
+    <g transform="translate(440 220)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A08</text>
+      <text class="sub" x="22" y="70">Base ★</text>
+    </g>
+
+    <!-- Row 4 -->
+    <g transform="translate(0 330)">
+      <rect class="cell" fill="rgba(251,191,36,0.16)" />
+      <text class="label" x="22" y="45" fill="#fbbf24">C01</text>
+      <text class="sub" x="22" y="70">Co-op ★★</text>
+    </g>
+    <g transform="translate(110 330)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A12</text>
+      <text class="sub" x="22" y="70">Base ★★</text>
+    </g>
+    <g transform="translate(220 330)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A02</text>
+      <text class="sub" x="22" y="70">Base ★★</text>
+    </g>
+    <g transform="translate(330 330)">
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="45" fill="#34d399">B05</text>
+      <text class="sub" x="22" y="70">Condition ★</text>
+    </g>
+    <g transform="translate(440 330)">
+      <rect class="cell" fill="rgba(251,191,36,0.16)" />
+      <text class="label" x="22" y="45" fill="#fbbf24">C09</text>
+      <text class="sub" x="22" y="70">Co-op ★★</text>
+    </g>
+
+    <!-- Row 5 -->
+    <g transform="translate(0 440)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A13</text>
+      <text class="sub" x="22" y="70">Base ★★</text>
+    </g>
+    <g transform="translate(110 440)">
+      <rect class="cell" fill="rgba(251,191,36,0.16)" />
+      <text class="label" x="22" y="45" fill="#fbbf24">C04</text>
+      <text class="sub" x="22" y="70">Co-op ★★</text>
+    </g>
+    <g transform="translate(220 440)">
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="45" fill="#34d399">B10</text>
+      <text class="sub" x="22" y="70">Condition ★</text>
+    </g>
+    <g transform="translate(330 440)">
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="45" fill="#7dd3fc">A04</text>
+      <text class="sub" x="22" y="70">Base ★</text>
+    </g>
+    <g transform="translate(440 440)">
+      <rect class="cell" fill="rgba(248,113,113,0.16)" />
+      <text class="label" x="22" y="45" fill="#f87171">D03</text>
+      <text class="sub" x="22" y="70">Marathon ★★</text>
+    </g>
+  </g>
+</svg>
