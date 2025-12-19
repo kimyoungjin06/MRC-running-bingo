@@ -103,6 +103,20 @@ a:hover {
   min-width: 230px;
 }
 
+.brand__logo-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.brand__logo {
+  height: 36px;
+  width: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  background: var(--panel);
+}
+
 .brand__title {
   font-weight: 800;
   letter-spacing: -0.02em;

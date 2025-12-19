@@ -230,18 +230,32 @@ function getPreferredTheme() {
   return localStorage.getItem("theme") || "system";
 }
 
+function getEffectiveTheme() {
+  const pref = getPreferredTheme();
+  if (pref === "dark" || pref === "light") return pref;
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 function toggleTheme() {
   const current = getPreferredTheme();
   const next = current === "system" ? "dark" : current === "dark" ? "light" : "system";
   localStorage.setItem("theme", next);
   applyTheme(next === "system" ? "" : next);
   updateThemeButton();
+  updateLogo();
 }
 
 function updateThemeButton() {
   const btn = document.getElementById("themeToggle");
   const mode = getPreferredTheme();
   btn.textContent = mode === "system" ? "테마: 시스템" : mode === "dark" ? "테마: 다크" : "테마: 라이트";
+}
+
+function updateLogo() {
+  const logo = document.getElementById("brandLogo");
+  if (!logo) return;
+  const effective = getEffectiveTheme();
+  logo.src = effective === "light" ? "./assets/logo_yellow.png" : "./assets/logo_white.jpg";
 }
 
 function wireSearch() {
@@ -314,9 +328,19 @@ window.addEventListener("DOMContentLoaded", () => {
   const theme = getPreferredTheme();
   applyTheme(theme === "system" ? "" : theme);
   updateThemeButton();
+  updateLogo();
 
   document.getElementById("themeToggle").addEventListener("click", toggleTheme);
   wireSearch();
   wireCopyLink();
   loadPage(getPageKeyFromHash());
+
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (getPreferredTheme() === "system") {
+        applyTheme("");
+        updateLogo();
+      }
+    });
+  }
 });
