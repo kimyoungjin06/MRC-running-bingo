@@ -405,21 +405,21 @@ function drawBoardGrid(board) {
       if (!cell) continue;
 
       boardCtx.fillStyle = palette.text;
-      boardCtx.font = '700 18px "Segoe UI", system-ui, sans-serif';
-      boardCtx.fillText(cell.code || "", x + 16, y + 30);
+      boardCtx.font = '700 22px "Segoe UI", system-ui, sans-serif';
+      boardCtx.fillText(cell.code || "", x + 16, y + 36);
 
-      boardCtx.font = '500 14px "Segoe UI", system-ui, sans-serif';
+      boardCtx.font = '500 16px "Segoe UI", system-ui, sans-serif';
       const title = cell.title || "";
-      const titleLines = wrapText(boardCtx, title, cellSize - 32).slice(0, 3);
+      const titleLines = wrapText(boardCtx, title, cellSize - 28).slice(0, 3);
       titleLines.forEach((line, index) => {
-        boardCtx.fillText(line, x + 16, y + 58 + index * 18);
+        boardCtx.fillText(line, x + 16, y + 70 + index * 20);
       });
 
       if (cell.stars) {
-        boardCtx.font = '600 14px "Segoe UI", system-ui, sans-serif';
+        boardCtx.font = '600 16px "Segoe UI", system-ui, sans-serif';
         const stars = "★".repeat(cell.stars);
         boardCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        boardCtx.fillText(stars, x + 16, y + cellSize - 20);
+        boardCtx.fillText(stars, x + 16, y + cellSize - 18);
       }
     }
   }
