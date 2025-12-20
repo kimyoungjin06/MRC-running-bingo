@@ -406,20 +406,20 @@ function drawBoardGrid(board) {
 
       boardCtx.fillStyle = palette.text;
       boardCtx.font = '700 40px "Segoe UI", system-ui, sans-serif';
-      boardCtx.fillText(cell.code || "", x + 12, y + 42);
+      boardCtx.fillText(cell.code || "", x + 12, y + 38);
 
       boardCtx.font = '500 28px "Segoe UI", system-ui, sans-serif';
       const title = cell.title || "";
       const titleLines = wrapText(boardCtx, title, cellSize - 24).slice(0, 2);
       titleLines.forEach((line, index) => {
-        boardCtx.fillText(line, x + 12, y + 86 + index * 32);
+        boardCtx.fillText(line, x + 12, y + 78 + index * 28);
       });
 
       if (cell.stars) {
         boardCtx.font = '600 32px "Segoe UI", system-ui, sans-serif';
         const stars = "★".repeat(cell.stars);
         boardCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        boardCtx.fillText(stars, x + 12, y + cellSize - 10);
+        boardCtx.fillText(stars, x + 12, y + cellSize - 14);
       }
     }
   }
