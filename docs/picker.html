@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>빙고판 생성기 · 퍼즐형 빙고 러닝</title>
+    <meta
+      name="description"
+      content="카드 뒷면만 보고 25장을 고른 뒤, 규칙에 맞춰 5x5 빙고판을 배치하는 생성기"
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#content">본문으로</a>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <a class="brand__logo-wrap" href="./index.html#intro">
+            <img id="brandLogo" class="brand__logo" src="./assets/logo_white.jpg" alt="MRC Binggo 로고" />
+          </a>
+          <a class="brand__title" href="./index.html#intro">퍼즐형 빙고 러닝</a>
+          <span class="brand__subtitle">빙고판 생성기</span>
+        </div>
+
+        <nav class="nav" aria-label="페이지">
+          <a class="nav__link" href="./index.html#intro">문서</a>
+          <a class="nav__link" href="./picker.html" aria-current="page">빙고판 생성기</a>
+        </nav>
+
+        <div class="topbar__actions">
+          <a class="btn" href="./index.html#intro">문서로 돌아가기</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout picker" id="content">
+      <aside class="side">
+        <section class="card">
+          <h2 class="card__title">시즌 설정</h2>
+          <div class="field">
+            <label for="playerName">이름</label>
+            <input id="playerName" type="text" placeholder="예: 홍길동" autocomplete="name" />
+            <p class="field__help">티어/시드를 기록하고 싶다면 이름에 함께 적어주세요.</p>
+          </div>
+          <div class="field">
+            <label for="tierSelect">티어</label>
+            <select id="tierSelect">
+              <option value="beginner">초보</option>
+              <option value="intermediate">중수</option>
+              <option value="advanced">고수</option>
+            </select>
+          </div>
+          <div class="field field--inline">
+            <label for="variantToggle">변형 룰(중수 W2, 고수 W3)</label>
+            <input id="variantToggle" type="checkbox" checked />
+          </div>
+          <div class="field">
+            <label>공통 시드</label>
+            <div class="seed" id="seedDisplay"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">선택 현황</h2>
+          <div class="count-grid" id="countSummary"></div>
+          <div class="btn-row">
+            <button class="btn" id="autoSelectBtn" type="button">카드 자동 선택</button>
+            <button class="btn" id="autoAllBtn" type="button">전체 자동 생성</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">규칙 체크</h2>
+          <ul class="status-list" id="ruleStatus"></ul>
+          <div class="message" id="messageBox" role="status" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <section class="picker__main">
+        <section class="card">
+          <h2 class="card__title">1. 카드 선택 (뒷면만 공개)</h2>
+          <p class="section__meta">카드 뒷면에는 타입/셔플된 번호/난이도(★)만 표시됩니다.</p>
+          <div class="card-grid" id="cardGrid"></div>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">2. 빙고판 배치</h2>
+          <p class="section__meta">배치 규칙: W는 중앙(변형 룰은 모서리), C는 인접 금지, D는 모서리 금지.</p>
+          <div class="placement">
+            <div class="selected-strip">
+              <div class="selected-strip__header">
+                <span>배치할 카드</span>
+                <span class="muted">셀을 클릭하면 회수됩니다</span>
+              </div>
+              <div class="selected-grid" id="selectedCards"></div>
+              <div class="selected-strip__footer">
+                <span>현재 선택:</span>
+                <strong id="activeCardLabel">없음</strong>
+              </div>
+            </div>
+            <div class="board" id="boardGrid" aria-label="빙고판"></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="autoPlaceBtn" type="button">자동 배치</button>
+            <button class="btn btn--ghost" id="clearBoardBtn" type="button">배치 초기화</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">3. 제출</h2>
+          <p class="section__meta">제출은 Google Form으로 전송됩니다. 완료 후 기록 메시지가 뜨면 성공입니다.</p>
+          <div class="submit-row">
+            <button class="btn" id="submitBtn" type="button">구글 폼 제출</button>
+            <span class="submit-status" id="submitStatus"></span>
+          </div>
+          <div class="preview">
+            <label for="boardPreview">빙고판 텍스트 미리보기</label>
+            <textarea id="boardPreview" rows="7" readonly></textarea>
+            <button class="btn btn--ghost" id="copyBtn" type="button">텍스트 복사</button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <span>© MRC Binggo 2025W</span>
+        <span class="footer__sep">·</span>
+        <a class="footer__link" href="./index.html#intro">룰북 보기</a>
+      </div>
+    </footer>
+
+    <script src="./picker.js" defer></script>
+  </body>
+</html>
