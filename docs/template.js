@@ -372,7 +372,7 @@ function drawBoardGrid(board) {
   boardCtx.fillText(name, padding, padding + 34);
   boardCtx.font = '600 20px "Segoe UI", system-ui, sans-serif';
   boardCtx.fillStyle = palette.muted;
-  boardCtx.fillText("instagram@modu_running", padding, padding + 66);
+  boardCtx.fillText("#모두의러닝겨울방학빙고게임 @modu_running", padding, padding + 66);
 
   if (images.logo) {
     const logoWidth = 140;
@@ -382,10 +382,6 @@ function drawBoardGrid(board) {
     boardCtx.drawImage(images.logo, logoX, logoY, logoWidth, logoHeight);
   }
 
-  boardCtx.textAlign = "right";
-  boardCtx.font = '600 18px "Segoe UI", system-ui, sans-serif';
-  boardCtx.fillStyle = "rgba(255, 255, 255, 0.7)";
-  boardCtx.fillText("#모두의러닝겨울방학빙고게임", width - padding, padding + 90);
   boardCtx.textAlign = "left";
 
   const grid = board?.grid || [];
