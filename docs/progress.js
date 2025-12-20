@@ -103,14 +103,17 @@ function renderProgressTable(players, keyword) {
   `;
 
   filtered.forEach((player) => {
+    const checked = player.checked ?? (Array.isArray(player.checked_codes) ? player.checked_codes.length : 0);
+    const stars = player.stars ?? 0;
+    const tokens = player.tokens ?? 0;
     const row = document.createElement("div");
     row.className = "progress-row";
     row.innerHTML = `
       <span>${player.name || "-"}</span>
-      <span>${player.checked ?? 0}</span>
+      <span>${checked}</span>
       <span>${player.bingo ?? 0}</span>
-      <span>${player.stars ?? 0}</span>
-      <span>${player.tokens ?? 0}</span>
+      <span>${stars}</span>
+      <span>${tokens}</span>
       <span>${formatTime(player.last_update || "")}</span>
     `;
     table.appendChild(row);

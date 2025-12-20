@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -103,14 +104,23 @@ def resolve_code(raw: str) -> str | None:
     return m.group(1) if m else None
 
 
+def stable_id(value: str) -> str:
+    digest = hashlib.sha1(value.encode("utf-8")).hexdigest()
+    return digest[:10]
+
+
 def build_board_entry(
     *,
     name: str,
     timestamp: str | None,
     email: str | None,
+    player_id: str,
+    board_id: str,
     grid: list[list[dict[str, Any]]],
 ) -> dict[str, Any]:
     return {
+        "id": board_id,
+        "player_id": player_id,
         "name": name,
         "timestamp": timestamp,
         "email": email,
@@ -167,8 +177,20 @@ def generate_boards(input_path: Path, carddeck_path: Path) -> dict[str, Any]:
         timestamp = excel_serial_to_iso(timestamp_raw) or timestamp_raw or None
         email = row.get(header_to_col.get("이메일 주소", ""), "").strip() or None
 
+        player_id = f"player-{stable_id(name + '|' + (email or ''))}"
+        board_key = f"{name}|{timestamp_raw or ''}|{email or ''}"
+        board_id = f"board-{stable_id(board_key)}"
         grid = build_grid(row, header_to_col, cards)
-        boards.append(build_board_entry(name=name, timestamp=timestamp, email=email, grid=grid))
+        boards.append(
+            build_board_entry(
+                name=name,
+                timestamp=timestamp,
+                email=email,
+                player_id=player_id,
+                board_id=board_id,
+                grid=grid,
+            )
+        )
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),

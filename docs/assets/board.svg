@@ -36,136 +36,161 @@
     <!-- Row 1 -->
     <g transform="translate(0 0)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" x="0" y="0" />
-      <text class="label" x="20" y="45" fill="#7dd3fc">A03</text>
-      <text class="sub" x="20" y="70">Base ★★★</text>
+      <text class="label" x="20" y="44" fill="#7dd3fc">A02</text>
+      <text class="sub" x="20" y="66">Base</text>
+      <text class="sub" x="20" y="82">★★</text>
     </g>
     <g transform="translate(110 0)">
       <rect class="cell" fill="rgba(45,212,191,0.16)" />
-      <text class="label" x="22" y="45" fill="#34d399">B07</text>
-      <text class="sub" x="22" y="70">Condition ★★</text>
+      <text class="label" x="22" y="44" fill="#34d399">B07</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(220 0)">
       <rect class="cell" fill="rgba(251,191,36,0.16)" />
-      <text class="label" x="22" y="45" fill="#fbbf24">C02</text>
-      <text class="sub" x="22" y="70">Co-op ★★★</text>
+      <text class="label" x="22" y="44" fill="#fbbf24">C05</text>
+      <text class="sub" x="22" y="66">Co-op</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(330 0)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A11</text>
-      <text class="sub" x="22" y="70">Base ★★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A11</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(440 0)">
       <rect class="cell" fill="rgba(45,212,191,0.16)" />
-      <text class="label" x="22" y="45" fill="#34d399">B01</text>
-      <text class="sub" x="22" y="70">Condition ★</text>
+      <text class="label" x="22" y="44" fill="#34d399">B01</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
 
     <!-- Row 2 -->
     <g transform="translate(0 110)">
       <rect class="cell" fill="rgba(45,212,191,0.16)" />
-      <text class="label" x="22" y="45" fill="#34d399">B09</text>
-      <text class="sub" x="22" y="70">Condition ★</text>
+      <text class="label" x="22" y="44" fill="#34d399">B09</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(110 110)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A07</text>
-      <text class="sub" x="22" y="70">Base ★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A07</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(220 110)">
-      <rect class="cell" fill="rgba(251,191,36,0.16)" />
-      <text class="label" x="22" y="45" fill="#fbbf24">C07</text>
-      <text class="sub" x="22" y="70">Co-op ★★</text>
+      <rect class="cell" fill="rgba(125,211,252,0.16)" />
+      <text class="label" x="22" y="44" fill="#7dd3fc">A13</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(330 110)">
       <rect class="cell" fill="rgba(248,113,113,0.16)" />
-      <text class="label" x="22" y="45" fill="#f87171">D01</text>
-      <text class="sub" x="22" y="70">Marathon ★★★</text>
+      <text class="label" x="22" y="44" fill="#f87171">D01</text>
+      <text class="sub" x="22" y="66">Marathon</text>
+      <text class="sub" x="22" y="82">★★★</text>
     </g>
     <g transform="translate(440 110)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A10</text>
-      <text class="sub" x="22" y="70">Base ★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A10</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
 
     <!-- Row 3 -->
     <g transform="translate(0 220)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A05</text>
-      <text class="sub" x="22" y="70">Base ★★★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A05</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(110 220)">
       <rect class="cell" fill="rgba(45,212,191,0.16)" />
-      <text class="label" x="22" y="45" fill="#34d399">B03</text>
-      <text class="sub" x="22" y="70">Condition ★★</text>
+      <text class="label" x="22" y="44" fill="#34d399">B03</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(220 220)">
       <rect class="cell" fill="rgba(167,139,250,0.22)" stroke="rgba(167,139,250,0.9)" stroke-width="3" />
-      <text class="label" x="50" y="52" fill="#c4b5fd" text-anchor="middle">W</text>
-      <text class="sub" x="50" y="72" text-anchor="middle">Wild 중앙</text>
+      <text class="label" x="50" y="44" fill="#c4b5fd" text-anchor="middle">W04</text>
+      <text class="sub" x="50" y="66" text-anchor="middle">Wild</text>
+      <text class="sub" x="50" y="82" text-anchor="middle">★★★</text>
     </g>
     <g transform="translate(330 220)">
       <rect class="cell" fill="rgba(45,212,191,0.16)" />
-      <text class="label" x="22" y="45" fill="#34d399">B06</text>
-      <text class="sub" x="22" y="70">Condition ★★★</text>
+      <text class="label" x="22" y="44" fill="#34d399">B06</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(440 220)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A08</text>
-      <text class="sub" x="22" y="70">Base ★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A08</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
 
     <!-- Row 4 -->
     <g transform="translate(0 330)">
       <rect class="cell" fill="rgba(251,191,36,0.16)" />
-      <text class="label" x="22" y="45" fill="#fbbf24">C01</text>
-      <text class="sub" x="22" y="70">Co-op ★★</text>
+      <text class="label" x="22" y="44" fill="#fbbf24">C01</text>
+      <text class="sub" x="22" y="66">Co-op</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(110 330)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A12</text>
-      <text class="sub" x="22" y="70">Base ★★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A12</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(220 330)">
-      <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A02</text>
-      <text class="sub" x="22" y="70">Base ★★</text>
+      <rect class="cell" fill="rgba(248,113,113,0.16)" />
+      <text class="label" x="22" y="44" fill="#f87171">D03</text>
+      <text class="sub" x="22" y="66">Marathon</text>
+      <text class="sub" x="22" y="82">★★★</text>
     </g>
     <g transform="translate(330 330)">
       <rect class="cell" fill="rgba(45,212,191,0.16)" />
-      <text class="label" x="22" y="45" fill="#34d399">B05</text>
-      <text class="sub" x="22" y="70">Condition ★</text>
+      <text class="label" x="22" y="44" fill="#34d399">B05</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(440 330)">
       <rect class="cell" fill="rgba(251,191,36,0.16)" />
-      <text class="label" x="22" y="45" fill="#fbbf24">C09</text>
-      <text class="sub" x="22" y="70">Co-op ★★</text>
+      <text class="label" x="22" y="44" fill="#fbbf24">C09</text>
+      <text class="sub" x="22" y="66">Co-op</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
 
     <!-- Row 5 -->
     <g transform="translate(0 440)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A13</text>
-      <text class="sub" x="22" y="70">Base ★★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A14</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(110 440)">
       <rect class="cell" fill="rgba(251,191,36,0.16)" />
-      <text class="label" x="22" y="45" fill="#fbbf24">C04</text>
-      <text class="sub" x="22" y="70">Co-op ★★</text>
+      <text class="label" x="22" y="44" fill="#fbbf24">C04</text>
+      <text class="sub" x="22" y="66">Co-op</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
     <g transform="translate(220 440)">
       <rect class="cell" fill="rgba(45,212,191,0.16)" />
-      <text class="label" x="22" y="45" fill="#34d399">B10</text>
-      <text class="sub" x="22" y="70">Condition ★</text>
+      <text class="label" x="22" y="44" fill="#34d399">B10</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(330 440)">
       <rect class="cell" fill="rgba(125,211,252,0.16)" />
-      <text class="label" x="22" y="45" fill="#7dd3fc">A04</text>
-      <text class="sub" x="22" y="70">Base ★</text>
+      <text class="label" x="22" y="44" fill="#7dd3fc">A04</text>
+      <text class="sub" x="22" y="66">Base</text>
+      <text class="sub" x="22" y="82">★</text>
     </g>
     <g transform="translate(440 440)">
-      <rect class="cell" fill="rgba(248,113,113,0.16)" />
-      <text class="label" x="22" y="45" fill="#f87171">D03</text>
-      <text class="sub" x="22" y="70">Marathon ★★</text>
+      <rect class="cell" fill="rgba(45,212,191,0.16)" />
+      <text class="label" x="22" y="44" fill="#34d399">B02</text>
+      <text class="sub" x="22" y="66">Condition</text>
+      <text class="sub" x="22" y="82">★★</text>
     </g>
   </g>
 </svg>

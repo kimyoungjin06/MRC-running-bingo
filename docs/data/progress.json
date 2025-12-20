@@ -1,12 +1,53 @@
 {
-  "generated_at": "2025-12-20T09:30:00+00:00",
+  "version": 1,
+  "seed": "2025W",
+  "generated_at": "2025-12-20T18:30:00+09:00",
   "summary": {
-    "total_players": 0,
-    "total_checked": 0,
-    "total_stars": 0
+    "total_players": 1,
+    "total_checked": 7,
+    "total_stars": 13
   },
-  "attack_logs": [],
-  "token_holds": [],
-  "latest_logs": [],
-  "players": []
+  "attack_logs": [
+    {
+      "time": "2025-12-20T18:20:00+09:00",
+      "actor": "김영진",
+      "target": "홍길동",
+      "seal_type": "B"
+    }
+  ],
+  "token_holds": [
+    {
+      "name": "김영진",
+      "hold": 1,
+      "event": "earned"
+    }
+  ],
+  "latest_logs": [
+    {
+      "time": "2025-12-20T18:25:00+09:00",
+      "player": "김영진",
+      "message": "W04 완료 → 토큰 획득"
+    }
+  ],
+  "players": [
+    {
+      "id": "player-14631f01bf",
+      "name": "김영진",
+      "checked": 7,
+      "bingo": 0,
+      "stars": 13,
+      "tokens": 1,
+      "last_update": "2025-12-20T18:30:00+09:00",
+      "checked_codes": [
+        "C03",
+        "A03",
+        "D02",
+        "A11",
+        "B09",
+        "W04",
+        "B01"
+      ],
+      "example": true
+    }
+  ]
 }
