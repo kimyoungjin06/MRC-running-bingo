@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>진행도 · 퍼즐형 빙고 러닝</title>
+    <meta name="description" content="공격/토큰/최신 로그와 참여자 진행도를 확인하는 대시보드" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="page--boards">
+    <a class="skip" href="#content">본문으로</a>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <a class="brand__logo-wrap" href="./index.html#intro">
+            <img id="brandLogo" class="brand__logo" src="./assets/logo.png" alt="MRC Binggo 로고" />
+          </a>
+          <a class="brand__title" href="./index.html#intro">퍼즐형 빙고 러닝</a>
+          <span class="brand__subtitle">진행도</span>
+        </div>
+
+        <nav class="nav" aria-label="페이지">
+          <a class="nav__link" href="./index.html#intro">문서</a>
+          <a class="nav__link" href="./picker.html">빙고판 생성기</a>
+          <a class="nav__link" href="./submit.html">인증 제출</a>
+          <a class="nav__link" href="./boards.html">빙고판 보기</a>
+          <a class="nav__link" href="./progress.html" aria-current="page">진행도</a>
+        </nav>
+
+        <div class="topbar__actions">
+          <a class="btn" href="./index.html#intro">문서로 돌아가기</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout" id="content">
+      <aside class="side">
+        <section class="card hero-card">
+          <img class="hero-logo" src="./assets/logo.png" alt="MRC Binggo 로고" />
+          <h2 class="card__title">Daily Progress</h2>
+          <p class="section__meta" id="generatedAt">최근 업데이트: -</p>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">요약</h2>
+          <div class="count-grid" id="summaryCounts"></div>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">필터</h2>
+          <div class="field">
+            <label for="progressSearch">이름 검색</label>
+            <input id="progressSearch" type="search" placeholder="예: 김영진" autocomplete="off" />
+          </div>
+        </section>
+      </aside>
+
+      <section class="picker__main">
+        <section class="card">
+          <h2 class="card__title">전략 현황</h2>
+          <div class="progress-top" id="progressTop">
+            <div class="progress-card">
+              <div class="progress-card__title">공격(Seal) 로그</div>
+              <ul class="progress-list" id="attackList"></ul>
+            </div>
+            <div class="progress-card">
+              <div class="progress-card__title">토큰 보유 현황</div>
+              <ul class="progress-list" id="tokenList"></ul>
+            </div>
+            <div class="progress-card">
+              <div class="progress-card__title">최신 로그</div>
+              <ul class="progress-list" id="latestList"></ul>
+            </div>
+          </div>
+          <div class="message" id="topMessage" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">참가자 진행도</h2>
+          <div class="progress-table" id="progressTable"></div>
+          <div class="message" id="progressMessage" role="status" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <span>© MRC Binggo 2025W</span>
+        <span class="footer__sep">·</span>
+        <a class="footer__link" href="./index.html#intro">룰북 보기</a>
+      </div>
+    </footer>
+
+    <script src="./progress.js" defer></script>
+  </body>
+</html>

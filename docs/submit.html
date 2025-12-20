@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>인증 제출 · 퍼즐형 빙고 러닝</title>
+    <meta
+      name="description"
+      content="러닝 인증(스크린샷)을 업로드하고, 이번 러닝에서 체크할 카드(최대 3칸)를 제출합니다."
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#content">본문으로</a>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <a class="brand__logo-wrap" href="./index.html#intro">
+            <img id="brandLogo" class="brand__logo" src="./assets/logo_yellow.png" alt="MRC Binggo 로고" />
+          </a>
+          <a class="brand__title" href="./index.html#intro">퍼즐형 빙고 러닝</a>
+          <span class="brand__subtitle">인증 제출</span>
+        </div>
+
+        <nav class="nav" aria-label="페이지">
+          <a class="nav__link" href="./index.html#intro">문서</a>
+          <a class="nav__link" href="./picker.html">빙고판 생성기</a>
+          <a class="nav__link" href="./submit.html" aria-current="page">인증 제출</a>
+          <a class="nav__link" href="./boards.html">빙고판 보기</a>
+          <a class="nav__link" href="./progress.html">진행도</a>
+        </nav>
+
+        <div class="topbar__actions">
+          <a class="btn" href="./index.html#intro">문서로 돌아가기</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout" id="content">
+      <aside class="side">
+        <section class="card">
+          <h2 class="card__title">제출 흐름</h2>
+          <ol class="steps">
+            <li>앱에서 러닝 기록 캡처</li>
+            <li>이번 러닝에서 체크할 카드(최대 3칸) 선택</li>
+            <li>업로드 → 자동 규칙 체크(일부는 보류)</li>
+          </ol>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">주의</h2>
+          <ul class="compact">
+            <li>파일/데이터는 운영진 PC에 저장됩니다.</li>
+            <li>W/D(누적/시즌) 카드는 기본적으로 “운영진 확인”으로 처리됩니다.</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">서버 연결</h2>
+          <div class="field">
+            <label for="apiBase">제출 서버 주소</label>
+            <input id="apiBase" type="url" placeholder="예: https://xxxx.trycloudflare.com" autocomplete="off" />
+            <p class="field__help">집 PC에서 실행 중인 API 주소(HTTPS). 끝의 / 는 자동 제거됩니다.</p>
+          </div>
+          <div class="field">
+            <label for="submitKey">제출 키(선택)</label>
+            <input id="submitKey" type="password" placeholder="운영진이 준 키" autocomplete="off" />
+            <p class="field__help">운영진이 키를 설정한 경우에만 입력하세요.</p>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="saveConnBtn" type="button">저장/연결 테스트</button>
+          </div>
+          <div class="message" id="connStatus" role="status" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <section class="picker__main">
+        <section class="card">
+          <h2 class="card__title">인증 제출 폼</h2>
+
+          <form id="submitForm">
+            <div class="field">
+              <label for="playerName">이름</label>
+              <input id="playerName" name="player_name" type="text" placeholder="예: 홍길동" autocomplete="name" required />
+            </div>
+
+            <div class="field">
+              <label for="tier">티어</label>
+              <select id="tier" name="tier" required>
+                <option value="beginner">초보</option>
+                <option value="intermediate">중수</option>
+                <option value="advanced">고수</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="runDate">러닝 날짜</label>
+              <input id="runDate" name="run_date" type="date" />
+              <p class="field__help">주말(B05) 자동 판정에 필요합니다(선택).</p>
+            </div>
+
+            <div class="field">
+              <label for="startTime">시작 시간</label>
+              <input id="startTime" name="start_time" type="time" />
+              <p class="field__help">야간(B01)/새벽(B02) 자동 판정에 필요합니다(선택).</p>
+            </div>
+
+            <div class="field field--inline">
+              <label for="distanceKm">거리(km)</label>
+              <input id="distanceKm" name="distance_km" type="number" inputmode="decimal" step="0.01" placeholder="예: 6.32" />
+            </div>
+
+            <div class="field field--inline">
+              <label for="durationMin">시간(분)</label>
+              <input id="durationMin" name="duration_min" type="number" inputmode="numeric" step="1" placeholder="예: 42" />
+            </div>
+
+            <details class="card-details">
+              <summary>선택 입력(자동 판정 정확도↑)</summary>
+              <div class="field">
+                <label for="precipitation">강수</label>
+                <select id="precipitation" name="precipitation">
+                  <option value="none">없음</option>
+                  <option value="rain">비</option>
+                  <option value="snow">눈</option>
+                </select>
+              </div>
+
+              <div class="field field--inline">
+                <label for="temperatureC">기온(°C)</label>
+                <input id="temperatureC" name="temperature_c" type="number" step="0.1" placeholder="예: -1.5" />
+              </div>
+
+              <div class="field field--inline">
+                <label for="feelsLikeC">체감(°C)</label>
+                <input id="feelsLikeC" name="feels_like_c" type="number" step="0.1" placeholder="예: -6" />
+              </div>
+
+              <div class="field field--inline">
+                <label for="windMs">풍속(m/s)</label>
+                <input id="windMs" name="wind_m_s" type="number" step="0.1" placeholder="예: 6.2" />
+              </div>
+
+              <div class="field field--inline">
+                <label for="elevationGain">고도상승(m)</label>
+                <input id="elevationGain" name="elevation_gain_m" type="number" step="1" placeholder="예: 120" />
+              </div>
+
+              <div class="field field--inline">
+                <label for="hillRepeats">언덕 반복(회)</label>
+                <input id="hillRepeats" name="hill_repeats" type="number" step="1" placeholder="예: 3" />
+              </div>
+
+              <div class="field field--inline">
+                <label>체크박스</label>
+                <div>
+                  <label><input type="checkbox" name="is_track" /> 트랙(B08)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_treadmill" /> 트레드밀(B09)</label>
+                  <br />
+                  <label><input type="checkbox" name="has_light_gear" /> 라이트/반사(B10)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_silent" /> 무음(A10)</label>
+                  <br />
+                  <label><input type="checkbox" name="did_warmup" /> 워밍업(A06)</label>
+                  <br />
+                  <label><input type="checkbox" name="did_cooldown" /> 쿨다운(A07)</label>
+                  <br />
+                  <label><input type="checkbox" name="did_foam_roll" /> 폼롤링(A08)</label>
+                  <br />
+                  <label><input type="checkbox" name="did_strength" /> 보강(A09)</label>
+                  <br />
+                  <label><input type="checkbox" name="did_drills" /> 드릴(A13)</label>
+                  <br />
+                  <label><input type="checkbox" name="did_log" /> 로그(A14)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_new_route" /> 새 코스(A11)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_build_up" /> 빌드업(A12)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_thursday_meeting" /> 목요미식회(C05)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_bungae" /> 벙개(C01/C02)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_host" /> 호스트(C02)</label>
+                  <br />
+                  <label><input type="checkbox" name="after_social" /> 커피/식사(C09)</label>
+                  <br />
+                  <label><input type="checkbox" name="is_easy" /> 회복페이스(C08)</label>
+                </div>
+              </div>
+
+              <div class="field field--inline">
+                <label for="groupSize">그룹 인원</label>
+                <input id="groupSize" name="group_size" type="number" step="1" placeholder="예: 2" />
+              </div>
+
+              <div class="field field--inline">
+                <label for="dayRunnersCount">당일 인증 인원</label>
+                <input id="dayRunnersCount" name="day_runners_count" type="number" step="1" placeholder="예: 3" />
+              </div>
+
+              <div class="field">
+                <label for="groupTiers">그룹 티어(쉼표 구분)</label>
+                <input id="groupTiers" name="group_tiers" type="text" placeholder="예: beginner, intermediate" />
+                <p class="field__help">C06/C07 자동 판정에 필요(선택).</p>
+              </div>
+            </details>
+
+            <details class="card-details">
+              <summary>전략 로그(공격/토큰/최신 기록)</summary>
+              <div class="field">
+                <label for="tokenEvent">토큰 이벤트</label>
+                <select id="tokenEvent" name="token_event">
+                  <option value="">없음</option>
+                  <option value="earned">토큰 획득</option>
+                  <option value="seal">Seal 사용</option>
+                  <option value="shield">Shield 사용</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="tokenHold">현재 토큰 보유</label>
+                <select id="tokenHold" name="token_hold">
+                  <option value="">미기입</option>
+                  <option value="0">0개</option>
+                  <option value="1">1개</option>
+                </select>
+              </div>
+              <div class="field is-hidden" id="sealTargetField">
+                <label for="sealTarget">Seal 대상</label>
+                <input id="sealTarget" name="seal_target" type="text" placeholder="예: 홍길동" />
+              </div>
+              <div class="field is-hidden" id="sealTypeField">
+                <label for="sealType">Seal 타입</label>
+                <select id="sealType" name="seal_type">
+                  <option value="">선택</option>
+                  <option value="B">B (Condition)</option>
+                  <option value="C">C (Co-op)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="logSummary">최신 로그</label>
+                <input id="logSummary" name="log_summary" type="text" placeholder="예: 오늘 토큰 획득" />
+              </div>
+            </details>
+
+            <div class="field">
+              <label>이번 러닝에서 체크할 카드(최대 3칸)</label>
+              <input class="claim-input" name="claimed_labels" type="text" placeholder="예: A11" />
+              <input class="claim-input" name="claimed_labels" type="text" placeholder="예: B05 (선택)" />
+              <input class="claim-input" name="claimed_labels" type="text" placeholder="예: C01 (선택)" />
+              <p class="field__help" id="rulePreview"></p>
+            </div>
+
+            <div class="field">
+              <label for="files">스크린샷 업로드</label>
+              <input id="files" name="files" type="file" accept="image/*" multiple required />
+            </div>
+
+            <div class="field">
+              <label for="notes">메모(선택)</label>
+              <input id="notes" name="notes" type="text" placeholder="예: 같이 뛴 사람 @OOO" />
+            </div>
+
+            <div class="submit-row">
+              <button class="btn" id="submitBtn" type="submit">제출</button>
+              <span class="submit-status" id="submitStatus"></span>
+            </div>
+
+            <div class="message" id="submitMessage" role="status" aria-live="polite"></div>
+            <ul class="status-list" id="resultList"></ul>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <span>© MRC Binggo 2025W</span>
+        <span class="footer__sep">·</span>
+        <a class="footer__link" href="./index.html#intro">룰북 보기</a>
+      </div>
+    </footer>
+
+    <script src="./submit.js" defer></script>
+  </body>
+</html>

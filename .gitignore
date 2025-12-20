@@ -1,3 +1,5 @@
-Data/
+/Data/
 __pycache__/
 *.pyc
+submission_server/storage/
+submission_server/.env

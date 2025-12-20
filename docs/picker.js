@@ -7,7 +7,7 @@ const FORM_CELL_MAP = [
   { row: 0, col: 1, entry: "entry.588661901" },
   { row: 0, col: 2, entry: "entry.355020899" },
   { row: 0, col: 3, entry: "entry.589544293" },
-  { row: 0, col: 3, entry: "entry.61302612" },
+  // { row: 0, col: 3, entry: "entry.61302612" },
   { row: 0, col: 4, entry: "entry.2009024998" },
   { row: 1, col: 0, entry: "entry.365601987" },
   { row: 1, col: 1, entry: "entry.657292462" },

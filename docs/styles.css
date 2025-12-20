@@ -51,6 +51,10 @@ body {
   isolation: isolate;
 }
 
+body.page--boards {
+  --bg-photo-opacity: 0.26;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -623,10 +627,32 @@ a:hover {
   color: color-mix(in srgb, var(--type-b) 80%, var(--text));
 }
 
+.status-warn {
+  color: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+
+.status-bad {
+  color: color-mix(in srgb, var(--type-d) 80%, var(--text));
+}
+
 .message {
   margin-top: 10px;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.card-details {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+
+.card-details summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .message[data-type="error"] {
@@ -635,6 +661,26 @@ a:hover {
 
 .message[data-type="success"] {
   color: color-mix(in srgb, var(--type-b) 90%, var(--text));
+}
+
+.is-hidden {
+  display: none;
+}
+
+.hero-card {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+}
+
+.hero-logo {
+  width: min(200px, 70%);
+  height: auto;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
 }
 
 .card-grid {
@@ -797,6 +843,149 @@ a:hover {
   justify-content: center;
   gap: 2px;
   cursor: pointer;
+}
+
+.board-cell--static {
+  cursor: default;
+}
+
+.board--public .board-cell {
+  min-height: 90px;
+  padding: 6px 4px;
+}
+
+.board--public .board-cell__title {
+  line-height: 1.2;
+}
+
+.board-cell__code {
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.board-cell__stars {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.board-cell__title {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 2px;
+}
+
+.board-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.board-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.board-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.board-card__title {
+  font-weight: 700;
+}
+
+.board-card__meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.progress-top {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.progress-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.progress-card__title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.progress-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.progress-table__grid {
+  display: grid;
+  gap: 6px;
+}
+
+.progress-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1.2fr) repeat(4, minmax(40px, 0.6fr)) minmax(90px, 1fr);
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 65%, transparent);
+  font-size: 0.9rem;
+}
+
+.progress-row--header {
+  font-weight: 700;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel-2) 80%, transparent);
+}
+
+@media (max-width: 720px) {
+  .progress-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+  }
+  .progress-row span:nth-child(2)::before {
+    content: "체크 ";
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .progress-row span:nth-child(3)::before {
+    content: "빙고 ";
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .progress-row span:nth-child(4)::before {
+    content: "별 ";
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .progress-row span:nth-child(5)::before {
+    content: "토큰 ";
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .progress-row span:nth-child(6)::before {
+    content: "최근 ";
+    color: var(--muted);
+    margin-right: 4px;
+  }
 }
 
 .board-cell--active {
