@@ -48,7 +48,8 @@
   <g transform="translate(170 90)">
     <rect x="0" y="0" width="120" height="70" rx="12" fill="rgba(45,212,191,0.12)" stroke="rgba(34,197,94,0.9)" stroke-width="2" />
     <text x="14" y="36" class="title" fill="#34d399">B02</text>
-    <text x="14" y="56" class="subtitle">Condition · ★★</text>
+    <text x="14" y="52" class="subtitle">Condition</text>
+    <text x="14" y="66" class="subtitle">★★</text>
   </g>
 
   <g transform="translate(300 90)">
@@ -60,7 +61,8 @@
   <g transform="translate(430 90)">
     <rect x="0" y="0" width="120" height="70" rx="12" fill="rgba(248,113,113,0.14)" stroke="rgba(248,113,113,0.9)" stroke-width="2" />
     <text x="14" y="36" class="title" fill="#f87171">D02</text>
-    <text x="14" y="56" class="subtitle">Marathon · ★★★</text>
+    <text x="14" y="52" class="subtitle">Marathon</text>
+    <text x="14" y="66" class="subtitle">★★★</text>
   </g>
 
   <g transform="translate(560 90)">
