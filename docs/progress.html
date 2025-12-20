@@ -26,6 +26,7 @@
           <a class="nav__link" href="./index.html#intro">문서</a>
           <a class="nav__link" href="./picker.html">빙고판 생성기</a>
           <a class="nav__link" href="./submit.html">인증 제출</a>
+          <a class="nav__link" href="./template.html">인증 템플릿</a>
           <a class="nav__link" href="./boards.html">빙고판 보기</a>
           <a class="nav__link" href="./progress.html" aria-current="page">진행도</a>
         </nav>
@@ -76,6 +77,16 @@
             </div>
           </div>
           <div class="message" id="topMessage" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">진행도 스프린트</h2>
+          <p class="section__meta">0칸부터 25칸까지, 체크 진행도를 주자처럼 표시합니다.</p>
+          <div class="sprint">
+            <div class="sprint-lanes" id="sprintLanes"></div>
+            <div class="sprint-axis" id="sprintAxis" aria-hidden="true"></div>
+          </div>
+          <div class="message" id="sprintMessage" role="status" aria-live="polite"></div>
         </section>
 
         <section class="card">

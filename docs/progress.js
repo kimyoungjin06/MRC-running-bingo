@@ -7,6 +7,9 @@ const refs = {
   tokenList: document.getElementById("tokenList"),
   latestList: document.getElementById("latestList"),
   topMessage: document.getElementById("topMessage"),
+  sprintLanes: document.getElementById("sprintLanes"),
+  sprintAxis: document.getElementById("sprintAxis"),
+  sprintMessage: document.getElementById("sprintMessage"),
   progressTable: document.getElementById("progressTable"),
   progressMessage: document.getElementById("progressMessage"),
   progressSearch: document.getElementById("progressSearch"),
@@ -22,6 +25,12 @@ function formatTime(value) {
   if (!value) return "";
   if (value.includes("T")) return value.replace("T", " ").slice(0, 16);
   return value;
+}
+
+function getCheckedCount(player) {
+  if (typeof player.checked === "number") return player.checked;
+  if (Array.isArray(player.checked_codes)) return player.checked_codes.length;
+  return 0;
 }
 
 function renderSummary(summary) {
@@ -76,6 +85,47 @@ function renderTop(data) {
   );
 }
 
+function renderSprint(players) {
+  if (!refs.sprintLanes || !refs.sprintAxis) return;
+  refs.sprintLanes.innerHTML = "";
+  refs.sprintAxis.innerHTML = "";
+
+  const maxCells = 25;
+  for (let i = 0; i <= maxCells; i += 1) {
+    const tick = document.createElement("span");
+    tick.textContent = String(i);
+    refs.sprintAxis.appendChild(tick);
+  }
+
+  if (!players || players.length === 0) {
+    setMessage(refs.sprintMessage, "진행도 데이터가 없습니다.");
+    return;
+  }
+  setMessage(refs.sprintMessage, "");
+
+  const sorted = [...players].sort((a, b) => getCheckedCount(b) - getCheckedCount(a));
+  sorted.forEach((player) => {
+    const checked = getCheckedCount(player);
+    const progress = Math.max(0, Math.min(checked, maxCells)) / maxCells;
+    const percent = `${(progress * 100).toFixed(1)}%`;
+    const lane = document.createElement("div");
+    lane.className = "sprint-lane";
+    lane.style.setProperty("--progress", percent);
+    lane.innerHTML = `
+      <div class="sprint-lane__header">
+        <span class="sprint-lane__name">${player.name || "-"}</span>
+        <span class="sprint-lane__value">${checked}/${maxCells}</span>
+      </div>
+      <div class="sprint-track">
+        <div class="sprint-track__progress"></div>
+        <div class="sprint-track__line"></div>
+        <div class="sprint-runner" aria-hidden="true"></div>
+      </div>
+    `;
+    refs.sprintLanes.appendChild(lane);
+  });
+}
+
 function renderProgressTable(players, keyword) {
   refs.progressTable.innerHTML = "";
   const filtered = players.filter((player) => {
@@ -103,7 +153,7 @@ function renderProgressTable(players, keyword) {
   `;
 
   filtered.forEach((player) => {
-    const checked = player.checked ?? (Array.isArray(player.checked_codes) ? player.checked_codes.length : 0);
+    const checked = getCheckedCount(player);
     const stars = player.stars ?? 0;
     const tokens = player.tokens ?? 0;
     const row = document.createElement("div");
@@ -133,10 +183,12 @@ async function loadProgress() {
     renderTop(data);
 
     allPlayers = Array.isArray(data.players) ? data.players : [];
+    renderSprint(allPlayers);
     renderProgressTable(allPlayers, refs.progressSearch.value.trim());
   } catch (err) {
     setMessage(refs.topMessage, "progress.json을 불러오지 못했습니다. 매일 업데이트 후 다시 확인하세요.");
     setMessage(refs.progressMessage, "progress.json을 불러오지 못했습니다.");
+    setMessage(refs.sprintMessage, "progress.json을 불러오지 못했습니다.");
   }
 }
 

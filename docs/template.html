@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>인증 템플릿 · 퍼즐형 빙고 러닝</title>
+    <meta
+      name="description"
+      content="Jungrang-cheon 배경과 로고를 활용해 러닝 인증용 PNG 템플릿을 생성합니다."
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="page--template">
+    <a class="skip" href="#content">본문으로</a>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <div class="brand">
+          <a class="brand__logo-wrap" href="./index.html#intro">
+            <img id="brandLogo" class="brand__logo" src="./assets/logo_yellow.png" alt="MRC Binggo 로고" />
+          </a>
+          <a class="brand__title" href="./index.html#intro">퍼즐형 빙고 러닝</a>
+          <span class="brand__subtitle">인증 템플릿</span>
+        </div>
+
+        <nav class="nav" aria-label="페이지">
+          <a class="nav__link" href="./index.html#intro">문서</a>
+          <a class="nav__link" href="./picker.html">빙고판 생성기</a>
+          <a class="nav__link" href="./submit.html">인증 제출</a>
+          <a class="nav__link" href="./template.html" aria-current="page">인증 템플릿</a>
+          <a class="nav__link" href="./boards.html">빙고판 보기</a>
+          <a class="nav__link" href="./progress.html">진행도</a>
+        </nav>
+
+        <div class="topbar__actions">
+          <a class="btn" href="./index.html#intro">문서로 돌아가기</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container layout" id="content">
+      <aside class="side">
+        <section class="card">
+          <h2 class="card__title">사용법</h2>
+          <ol class="steps">
+            <li>이름/티어/요약을 입력</li>
+            <li>PNG 다운로드 클릭</li>
+            <li>러닝 캡처를 합성해서 공유</li>
+          </ol>
+        </section>
+
+        <section class="card">
+          <h2 class="card__title">안내</h2>
+          <ul class="compact">
+            <li>템플릿 해상도: 1080 × 1350</li>
+            <li>Jungrang-cheon.png + logo.png 사용</li>
+            <li>텍스트는 입력값이 없으면 예시가 표시됩니다.</li>
+          </ul>
+        </section>
+      </aside>
+
+      <section class="picker__main">
+        <section class="card">
+          <h2 class="card__title">PNG 템플릿 생성</h2>
+          <p class="section__meta">입력값을 바꾸면 미리보기가 실시간으로 갱신됩니다.</p>
+
+          <div class="template-grid">
+            <form id="templateForm" class="template-form">
+              <div class="field">
+                <label for="tplName">이름</label>
+                <input id="tplName" type="text" placeholder="예: 홍길동" autocomplete="name" />
+              </div>
+
+              <div class="field">
+                <label for="tplTier">티어</label>
+                <select id="tplTier">
+                  <option value="beginner">초보</option>
+                  <option value="intermediate">중수</option>
+                  <option value="advanced">고수</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="tplDate">날짜</label>
+                <input id="tplDate" type="date" />
+              </div>
+
+              <div class="field">
+                <label for="tplSummary">러닝 요약</label>
+                <input id="tplSummary" type="text" placeholder="예: 6.2km · 42분" />
+              </div>
+
+              <div class="field">
+                <label for="tplBoardId">빙고판 ID (선택)</label>
+                <input id="tplBoardId" type="text" placeholder="예: BINGGO-0001" />
+              </div>
+
+              <div class="field">
+                <label for="tplNote">한 줄 기록</label>
+                <textarea id="tplNote" rows="3" placeholder="예: 오늘 바람이 차가웠다."></textarea>
+              </div>
+
+              <div class="field field--inline">
+                <label for="tplPlaceholder">캡처 영역 안내 표시</label>
+                <input id="tplPlaceholder" type="checkbox" checked />
+              </div>
+            </form>
+
+            <div class="template-preview">
+              <div class="template-canvas-wrap">
+                <canvas id="templateCanvas" width="1080" height="1350" aria-label="인증 템플릿 미리보기"></canvas>
+              </div>
+              <div class="template-actions">
+                <button class="btn" id="downloadBtn" type="button">PNG 다운로드</button>
+                <button class="btn btn--ghost" id="resetBtn" type="button">초기화</button>
+              </div>
+              <p class="template-note">
+                캡처 영역 안내를 끄면 깨끗한 배경 템플릿으로 내려받을 수 있어요.
+              </p>
+              <div class="message" id="templateStatus" role="status" aria-live="polite"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <span>© MRC Binggo 2025W</span>
+        <span class="footer__sep">·</span>
+        <a class="footer__link" href="./index.html#intro">룰북 보기</a>
+      </div>
+    </footer>
+
+    <script src="./template.js" defer></script>
+  </body>
+</html>

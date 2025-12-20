@@ -29,6 +29,7 @@
           <a class="nav__link" href="./index.html#intro">문서</a>
           <a class="nav__link" href="./picker.html">빙고판 생성기</a>
           <a class="nav__link" href="./submit.html" aria-current="page">인증 제출</a>
+          <a class="nav__link" href="./template.html">인증 템플릿</a>
           <a class="nav__link" href="./boards.html">빙고판 보기</a>
           <a class="nav__link" href="./progress.html">진행도</a>
         </nav>
@@ -89,7 +90,7 @@
 
             <div class="field">
               <label for="tier">티어</label>
-              <select id="tier" name="tier" required>
+              <select id="tier" name="tier" data-custom-select required>
                 <option value="beginner">초보</option>
                 <option value="intermediate">중수</option>
                 <option value="advanced">고수</option>
@@ -122,7 +123,7 @@
               <summary>선택 입력(자동 판정 정확도↑)</summary>
               <div class="field">
                 <label for="precipitation">강수</label>
-                <select id="precipitation" name="precipitation">
+                <select id="precipitation" name="precipitation" data-custom-select>
                   <option value="none">없음</option>
                   <option value="rain">비</option>
                   <option value="snow">눈</option>
@@ -214,7 +215,7 @@
               <summary>전략 로그(공격/토큰/최신 기록)</summary>
               <div class="field">
                 <label for="tokenEvent">토큰 이벤트</label>
-                <select id="tokenEvent" name="token_event">
+                <select id="tokenEvent" name="token_event" data-custom-select>
                   <option value="">없음</option>
                   <option value="earned">토큰 획득</option>
                   <option value="seal">Seal 사용</option>
@@ -223,7 +224,7 @@
               </div>
               <div class="field">
                 <label for="tokenHold">현재 토큰 보유</label>
-                <select id="tokenHold" name="token_hold">
+                <select id="tokenHold" name="token_hold" data-custom-select>
                   <option value="">미기입</option>
                   <option value="0">0개</option>
                   <option value="1">1개</option>
@@ -235,7 +236,7 @@
               </div>
               <div class="field is-hidden" id="sealTypeField">
                 <label for="sealType">Seal 타입</label>
-                <select id="sealType" name="seal_type">
+                <select id="sealType" name="seal_type" data-custom-select>
                   <option value="">선택</option>
                   <option value="B">B (Condition)</option>
                   <option value="C">C (Co-op)</option>
