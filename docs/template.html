@@ -120,6 +120,19 @@
                 캡처 영역 안내를 끄면 깨끗한 배경 템플릿으로 내려받을 수 있어요.
               </p>
               <div class="message" id="templateStatus" role="status" aria-live="polite"></div>
+
+              <div class="template-board">
+                <h3 class="template-board__title">빙고판 PNG</h3>
+                <p class="section__meta">빙고판 ID 또는 이름으로 보드를 불러와 PNG로 저장할 수 있어요.</p>
+                <div class="template-board__canvas-wrap">
+                  <canvas id="boardCanvas" width="1080" height="1080" aria-label="빙고판 미리보기"></canvas>
+                </div>
+                <div class="template-actions">
+                  <button class="btn" id="boardRefreshBtn" type="button">빙고판 불러오기</button>
+                  <button class="btn btn--ghost" id="boardDownloadBtn" type="button">빙고판 PNG 다운로드</button>
+                </div>
+                <div class="message" id="boardStatus" role="status" aria-live="polite"></div>
+              </div>
             </div>
           </div>
         </section>

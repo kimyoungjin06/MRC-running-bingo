@@ -1,4 +1,6 @@
 const CANVAS_SIZE = { width: 1080, height: 1350 };
+const BOARD_CANVAS_SIZE = { width: 1080, height: 1080 };
+const BOARDS_URL = "./data/boards.json";
 
 const tierLabels = {
   beginner: "초보",
@@ -37,16 +39,26 @@ const refs = {
   resetBtn: document.getElementById("resetBtn"),
   status: document.getElementById("templateStatus"),
   canvas: document.getElementById("templateCanvas"),
+  boardCanvas: document.getElementById("boardCanvas"),
+  boardStatus: document.getElementById("boardStatus"),
+  boardRefreshBtn: document.getElementById("boardRefreshBtn"),
+  boardDownloadBtn: document.getElementById("boardDownloadBtn"),
 };
 
 const ctx = refs.canvas.getContext("2d");
+const boardCtx = refs.boardCanvas.getContext("2d");
 const images = {
   bg: null,
   logo: null,
 };
+let boards = [];
 
 function setStatus(message) {
   refs.status.textContent = message || "";
+}
+
+function setBoardStatus(message) {
+  refs.boardStatus.textContent = message || "";
 }
 
 function formatDate(value) {
@@ -58,42 +70,64 @@ function getValue(input, fallback) {
   return (input.value || "").trim() || fallback;
 }
 
-function drawCover(img, x, y, w, h) {
+function drawCover(context, img, x, y, w, h) {
   const scale = Math.max(w / img.width, h / img.height);
   const iw = img.width * scale;
   const ih = img.height * scale;
   const ix = x + (w - iw) / 2;
   const iy = y + (h - ih) / 2;
-  ctx.drawImage(img, ix, iy, iw, ih);
+  context.drawImage(img, ix, iy, iw, ih);
 }
 
-function roundRect(x, y, w, h, r) {
+function drawBoardPlaceholder() {
+  const width = BOARD_CANVAS_SIZE.width;
+  const height = BOARD_CANVAS_SIZE.height;
+  refs.boardCanvas.width = width;
+  refs.boardCanvas.height = height;
+  boardCtx.clearRect(0, 0, width, height);
+  boardCtx.fillStyle = "rgba(15, 23, 42, 0.6)";
+  boardCtx.fillRect(0, 0, width, height);
+  boardCtx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+  boardCtx.lineWidth = 2;
+  boardCtx.strokeRect(40, 40, width - 80, height - 80);
+  boardCtx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  boardCtx.font = '600 28px "Segoe UI", system-ui, sans-serif';
+  boardCtx.textAlign = "center";
+  boardCtx.textBaseline = "middle";
+  boardCtx.fillText("빙고판을 불러오지 못했습니다", width / 2, height / 2 - 16);
+  boardCtx.font = '500 20px "Segoe UI", system-ui, sans-serif';
+  boardCtx.fillText("이름 또는 빙고판 ID를 확인해 주세요", width / 2, height / 2 + 18);
+  boardCtx.textAlign = "left";
+  boardCtx.textBaseline = "alphabetic";
+}
+
+function roundRect(context, x, y, w, h, r) {
   const radius = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + w, y, x + w, y + h, radius);
-  ctx.arcTo(x + w, y + h, x, y + h, radius);
-  ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
-  ctx.closePath();
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + w, y, x + w, y + h, radius);
+  context.arcTo(x + w, y + h, x, y + h, radius);
+  context.arcTo(x, y + h, x, y, radius);
+  context.arcTo(x, y, x + w, y, radius);
+  context.closePath();
 }
 
-function truncateText(text, maxWidth) {
-  if (ctx.measureText(text).width <= maxWidth) return text;
+function truncateText(context, text, maxWidth) {
+  if (context.measureText(text).width <= maxWidth) return text;
   let trimmed = text;
-  while (trimmed.length > 0 && ctx.measureText(trimmed + "…").width > maxWidth) {
+  while (trimmed.length > 0 && context.measureText(trimmed + "…").width > maxWidth) {
     trimmed = trimmed.slice(0, -1);
   }
   return trimmed ? trimmed + "…" : "";
 }
 
-function wrapText(text, maxWidth) {
+function wrapText(context, text, maxWidth) {
   const chars = Array.from(text);
   const lines = [];
   let line = "";
   chars.forEach((char) => {
     const testLine = line + char;
-    if (ctx.measureText(testLine).width > maxWidth && line) {
+    if (context.measureText(testLine).width > maxWidth && line) {
       lines.push(line);
       line = char;
     } else {
@@ -104,18 +138,18 @@ function wrapText(text, maxWidth) {
   return lines;
 }
 
-function drawTextBlock(text, x, y, maxWidth, lineHeight, maxLines = 1) {
+function drawTextBlock(context, text, x, y, maxWidth, lineHeight, maxLines = 1) {
   if (!text) return;
   if (maxLines <= 1) {
-    ctx.fillText(truncateText(text, maxWidth), x, y);
+    context.fillText(truncateText(context, text, maxWidth), x, y);
     return;
   }
-  const lines = wrapText(text, maxWidth);
+  const lines = wrapText(context, text, maxWidth);
   const finalLines = lines.slice(0, maxLines);
   finalLines.forEach((line, index) => {
     const isLast = index === maxLines - 1 && lines.length > maxLines;
-    const content = isLast ? truncateText(line, maxWidth) : line;
-    ctx.fillText(content, x, y + lineHeight * index);
+    const content = isLast ? truncateText(context, line, maxWidth) : line;
+    context.fillText(content, x, y + lineHeight * index);
   });
 }
 
@@ -131,7 +165,7 @@ function drawField(label, value, x, y, width, options = {}) {
 
   ctx.font = `600 ${valueSize}px "Segoe UI", system-ui, sans-serif`;
   ctx.fillStyle = palette.text;
-  drawTextBlock(value, x, y + labelSize + 10, width, lineHeight, maxLines);
+  drawTextBlock(ctx, value, x, y + labelSize + 10, width, lineHeight, maxLines);
 }
 
 function drawPlaceholderArea(x, y, w, h) {
@@ -139,7 +173,7 @@ function drawPlaceholderArea(x, y, w, h) {
   ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
   ctx.lineWidth = 3;
   ctx.setLineDash([18, 10]);
-  roundRect(x, y, w, h, 22);
+  roundRect(ctx, x, y, w, h, 22);
   ctx.stroke();
   ctx.restore();
 
@@ -164,7 +198,7 @@ function drawTemplate() {
 
   ctx.clearRect(0, 0, width, height);
 
-  drawCover(images.bg, 0, 0, width, height);
+  drawCover(ctx, images.bg, 0, 0, width, height);
 
   const overlay = ctx.createLinearGradient(0, 0, 0, height);
   overlay.addColorStop(0, "rgba(11, 16, 32, 0.25)");
@@ -204,7 +238,7 @@ function drawTemplate() {
     ctx.save();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
     ctx.lineWidth = 2;
-    roundRect(shotX, shotY, shotW, shotH, 22);
+    roundRect(ctx, shotX, shotY, shotW, shotH, 22);
     ctx.stroke();
     ctx.restore();
   }
@@ -215,13 +249,13 @@ function drawTemplate() {
   const infoH = height - infoY - 80;
 
   ctx.save();
-  roundRect(infoX, infoY, infoW, infoH, 28);
+  roundRect(ctx, infoX, infoY, infoW, infoH, 28);
   ctx.fillStyle = palette.card;
   ctx.fill();
   ctx.restore();
 
   ctx.save();
-  roundRect(infoX, infoY, infoW, infoH, 28);
+  roundRect(ctx, infoX, infoY, infoW, infoH, 28);
   ctx.strokeStyle = palette.stroke;
   ctx.lineWidth = 2;
   ctx.stroke();
@@ -260,6 +294,164 @@ function drawTemplate() {
   ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
   ctx.fillText("MRC Binggo 2025W", width - 90, height - 42);
   ctx.textAlign = "left";
+}
+
+function normalizeValue(value) {
+  return (value || "").trim().toLowerCase();
+}
+
+function findBoardMatch() {
+  if (!boards || boards.length === 0) return null;
+  const idInput = normalizeValue(refs.boardId.value);
+  const nameInput = normalizeValue(refs.name.value);
+
+  let matches = [];
+  if (idInput) {
+    matches = boards.filter((board) => {
+      const boardId = normalizeValue(board.id);
+      const playerId = normalizeValue(board.player_id);
+      const boardName = normalizeValue(board.name);
+      return boardId === idInput || playerId === idInput || boardName === idInput;
+    });
+  } else if (nameInput) {
+    matches = boards.filter((board) => normalizeValue(board.name) === nameInput);
+  }
+
+  if (matches.length === 0) return null;
+  matches.sort((a, b) => {
+    const aTime = new Date(a.timestamp || 0).getTime();
+    const bTime = new Date(b.timestamp || 0).getTime();
+    return bTime - aTime;
+  });
+  return matches[0];
+}
+
+function getTypeColor(type) {
+  switch (type) {
+    case "A":
+      return { fill: "rgba(96, 165, 250, 0.18)", stroke: "rgba(125, 211, 252, 0.9)" };
+    case "B":
+      return { fill: "rgba(52, 211, 153, 0.18)", stroke: "rgba(52, 211, 153, 0.9)" };
+    case "C":
+      return { fill: "rgba(251, 191, 36, 0.22)", stroke: "rgba(251, 191, 36, 0.9)" };
+    case "D":
+      return { fill: "rgba(248, 113, 113, 0.2)", stroke: "rgba(248, 113, 113, 0.9)" };
+    case "W":
+      return { fill: "rgba(196, 181, 253, 0.22)", stroke: "rgba(196, 181, 253, 0.95)" };
+    default:
+      return { fill: "rgba(255, 255, 255, 0.08)", stroke: "rgba(255, 255, 255, 0.2)" };
+  }
+}
+
+function drawBoardGrid(board) {
+  const width = BOARD_CANVAS_SIZE.width;
+  const height = BOARD_CANVAS_SIZE.height;
+  refs.boardCanvas.width = width;
+  refs.boardCanvas.height = height;
+  boardCtx.clearRect(0, 0, width, height);
+
+  if (images.bg) {
+    drawCover(boardCtx, images.bg, 0, 0, width, height);
+  } else {
+    boardCtx.fillStyle = "#0b1020";
+    boardCtx.fillRect(0, 0, width, height);
+  }
+
+  const overlay = boardCtx.createLinearGradient(0, 0, 0, height);
+  overlay.addColorStop(0, "rgba(11, 16, 32, 0.2)");
+  overlay.addColorStop(0.6, "rgba(11, 16, 32, 0.65)");
+  overlay.addColorStop(1, "rgba(11, 16, 32, 0.82)");
+  boardCtx.fillStyle = overlay;
+  boardCtx.fillRect(0, 0, width, height);
+
+  const padding = 32;
+  const headerHeight = 96;
+  const gridSize = Math.min(width - padding * 2, height - padding * 2 - headerHeight);
+  const gridX = (width - gridSize) / 2;
+  const gridY = padding + headerHeight;
+  const cellSize = gridSize / 5;
+
+  boardCtx.fillStyle = "rgba(15, 23, 42, 0.7)";
+  roundRect(boardCtx, gridX - 12, gridY - 12, gridSize + 24, gridSize + 24, 18);
+  boardCtx.fill();
+
+  const name = board?.name || getValue(refs.name, defaults.name);
+  const boardId = board?.id ? `#${board.id.slice(0, 8)}` : "빙고판";
+  boardCtx.fillStyle = palette.text;
+  boardCtx.font = '700 34px "Segoe UI", system-ui, sans-serif';
+  boardCtx.textAlign = "left";
+  boardCtx.fillText(`${name} · ${boardId}`, padding, padding + 34);
+  boardCtx.font = '500 20px "Segoe UI", system-ui, sans-serif';
+  boardCtx.fillStyle = palette.muted;
+  const timeText = board?.timestamp ? formatDate(board.timestamp.slice(0, 10)) : formatDate(refs.date.value);
+  boardCtx.fillText(`빙고판 생성일 ${timeText}`, padding, padding + 66);
+
+  const grid = board?.grid || [];
+  for (let row = 0; row < 5; row += 1) {
+    for (let col = 0; col < 5; col += 1) {
+      const cell = grid[row]?.[col];
+      const type = cell?.type || "?";
+      const { fill, stroke } = getTypeColor(type);
+      const x = gridX + col * cellSize;
+      const y = gridY + row * cellSize;
+
+      boardCtx.fillStyle = fill;
+      roundRect(boardCtx, x + 4, y + 4, cellSize - 8, cellSize - 8, 14);
+      boardCtx.fill();
+
+      boardCtx.strokeStyle = stroke;
+      boardCtx.lineWidth = 2;
+      roundRect(boardCtx, x + 4, y + 4, cellSize - 8, cellSize - 8, 14);
+      boardCtx.stroke();
+
+      if (!cell) continue;
+
+      boardCtx.fillStyle = palette.text;
+      boardCtx.font = '700 18px "Segoe UI", system-ui, sans-serif';
+      boardCtx.fillText(cell.code || "", x + 16, y + 30);
+
+      boardCtx.font = '500 14px "Segoe UI", system-ui, sans-serif';
+      const title = cell.title || "";
+      const titleLines = wrapText(boardCtx, title, cellSize - 32).slice(0, 3);
+      titleLines.forEach((line, index) => {
+        boardCtx.fillText(line, x + 16, y + 58 + index * 18);
+      });
+
+      if (cell.stars) {
+        boardCtx.font = '600 14px "Segoe UI", system-ui, sans-serif';
+        const stars = "★".repeat(cell.stars);
+        boardCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+        boardCtx.fillText(stars, x + 16, y + cellSize - 20);
+      }
+    }
+  }
+}
+
+function renderBoard() {
+  if (!refs.boardCanvas) return;
+  const board = findBoardMatch();
+  if (!board) {
+    setBoardStatus("빙고판을 찾지 못했습니다. 이름 또는 빙고판 ID를 입력해 주세요.");
+    drawBoardPlaceholder();
+    return;
+  }
+  setBoardStatus(`빙고판 로드 완료 · ${board.name || "-"} (${board.id?.slice(0, 8) || "board"})`);
+  drawBoardGrid(board);
+}
+
+function downloadBoard() {
+  if (!refs.boardCanvas) return;
+  try {
+    const dateStamp = formatDate(refs.date.value).replace(/\./g, "");
+    const filename = `mrc_binggo_board_${dateStamp}.png`;
+    const link = document.createElement("a");
+    link.href = refs.boardCanvas.toDataURL("image/png");
+    link.download = filename;
+    link.click();
+    setBoardStatus("빙고판 PNG가 다운로드되었습니다.");
+  } catch (err) {
+    setBoardStatus("빙고판 PNG 생성에 실패했습니다.");
+  }
 }
 
 function updateTemplate() {
@@ -325,18 +517,42 @@ async function init() {
     applyDefaults();
     updateTemplate();
   });
+  if (refs.boardRefreshBtn) {
+    refs.boardRefreshBtn.addEventListener("click", renderBoard);
+  }
+  if (refs.boardDownloadBtn) {
+    refs.boardDownloadBtn.addEventListener("click", downloadBoard);
+  }
+
+  if (refs.boardId) {
+    refs.boardId.addEventListener("input", renderBoard);
+  }
+  if (refs.name) {
+    refs.name.addEventListener("input", renderBoard);
+  }
 
   try {
-    const [bg, logo] = await Promise.all([
+    const [bg, logo, boardsRes] = await Promise.all([
       loadImage("./assets/Jungrang-cheon.png"),
       loadImage("./assets/logo.png"),
+      fetch(BOARDS_URL, { cache: "no-store" }),
     ]);
     images.bg = bg;
     images.logo = logo;
+    if (boardsRes.ok) {
+      const boardsJson = await boardsRes.json();
+      boards = Array.isArray(boardsJson.boards) ? boardsJson.boards : [];
+    } else {
+      setBoardStatus("빙고판 데이터를 불러오지 못했습니다.");
+      drawBoardPlaceholder();
+    }
     setStatus("");
     updateTemplate();
+    if (boardsRes.ok) renderBoard();
   } catch (err) {
     setStatus(err?.message || "이미지를 불러오지 못했습니다.");
+    setBoardStatus("빙고판 데이터를 불러오지 못했습니다.");
+    drawBoardPlaceholder();
   }
 }
 

@@ -835,6 +835,35 @@ html[data-theme="light"] .field select option {
   color: var(--muted);
 }
 
+.template-board {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-board__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.template-board__canvas-wrap {
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.template-board__canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
 @media (max-width: 980px) {
   .template-grid {
     grid-template-columns: 1fr;
