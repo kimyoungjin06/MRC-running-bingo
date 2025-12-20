@@ -578,6 +578,13 @@ html[data-theme="light"] .field select option {
   background-color: #ffffff;
 }
 
+.page--submit .field select {
+  color-scheme: light;
+  color: #0b1020;
+  background-color: rgba(248, 250, 252, 0.94);
+  border-color: color-mix(in srgb, var(--border) 60%, #ffffff 40%);
+}
+
 .field input::placeholder {
   color: var(--muted);
 }
