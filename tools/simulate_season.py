@@ -42,11 +42,11 @@ class CardDef:
 
 CARDS: dict[str, CardDef] = {
     # A. Base
-    "A01": CardDef("A01", "A", 1, "3km+"),
-    "A02": CardDef("A02", "A", 2, "5km+"),
-    "A03": CardDef("A03", "A", 3, "7km+"),
-    "A04": CardDef("A04", "A", 1, "30min+"),
-    "A05": CardDef("A05", "A", 3, "45min+"),
+    "A01": CardDef("A01", "A", 1, "4km+"),
+    "A02": CardDef("A02", "A", 2, "6km+"),
+    "A03": CardDef("A03", "A", 2, "8km+"),
+    "A04": CardDef("A04", "A", 1, "35min+"),
+    "A05": CardDef("A05", "A", 2, "50min+"),
     "A06": CardDef("A06", "A", 1, "Warm-up 5min"),
     "A07": CardDef("A07", "A", 1, "Cool-down stretch 10min"),
     "A08": CardDef("A08", "A", 1, "Foam roll / massage 5min"),
@@ -57,33 +57,33 @@ CARDS: dict[str, CardDef] = {
     "A13": CardDef("A13", "A", 2, "Running drills 5min"),
     "A14": CardDef("A14", "A", 1, "Run log + 1 line"),
     # B. Condition
-    "B01": CardDef("B01", "B", 1, "Night (>=18:00)"),
+    "B01": CardDef("B01", "B", 1, "Night (>=22:00)"),
     "B02": CardDef("B02", "B", 2, "Dawn (<06:00)"),
     "B03": CardDef("B03", "B", 2, "Below 0°C"),
     "B04": CardDef("B04", "B", 2, "Rain/Snow"),
     "B05": CardDef("B05", "B", 1, "Weekend"),
-    "B06": CardDef("B06", "B", 3, "Cold/windy (feels<=-5 or wind>=6)"),
+    "B06": CardDef("B06", "B", 2, "Cold/windy (feels<=-5 or wind>=6)"),
     "B07": CardDef("B07", "B", 2, "Hills (gain>=100 or repeats>=3)"),
     "B08": CardDef("B08", "B", 1, "Track"),
     "B09": CardDef("B09", "B", 1, "Treadmill"),
     "B10": CardDef("B10", "B", 1, "Reflective/light gear"),
     # C. Co-op
-    "C01": CardDef("C01", "C", 2, "Join group run"),
-    "C02": CardDef("C02", "C", 3, "Host group run (>=2)"),
-    "C03": CardDef("C03", "C", 2, "Pair run (>=2, 20min+)"),
+    "C01": CardDef("C01", "C", 1, "Join group run"),
+    "C02": CardDef("C02", "C", 2, "Host group run (>=2)"),
+    "C03": CardDef("C03", "C", 1, "Pair run (>=2, 20min+)"),
     "C04": CardDef("C04", "C", 2, "Same day 3+ runners"),
-    "C05": CardDef("C05", "C", 2, "Thursday meeting"),
-    "C06": CardDef("C06", "C", 3, "Pace-making 30min+"),
+    "C05": CardDef("C05", "C", 1, "Thursday meeting"),
+    "C06": CardDef("C06", "C", 2, "Pace-making 30min+"),
     "C07": CardDef("C07", "C", 2, "Mixed-tier run"),
-    "C08": CardDef("C08", "C", 2, "Easy chat run 60min+"),
-    "C09": CardDef("C09", "C", 2, "After-run coffee/stretch"),
+    "C08": CardDef("C08", "C", 1, "Easy chat run 60min+"),
+    "C09": CardDef("C09", "C", 1, "After-run coffee/stretch"),
     # D. Marathon
     "D01": CardDef("D01", "D", 3, "5-day streak"),
     "D02": CardDef("D02", "D", 3, "6 runs in a week"),
-    "D03": CardDef("D03", "D", 2, "Tier distance goal"),
+    "D03": CardDef("D03", "D", 3, "Tier distance goal"),
     # W. Wild
     "W01": CardDef("W01", "W", 3, "Thu meeting x3"),
-    "W02": CardDef("W02", "W", 4, "Host 2x (>=3 ppl each)"),
+    "W02": CardDef("W02", "W", 3, "Host 2x (>=3 ppl each)"),
     "W03": CardDef("W03", "W", 3, "Pace-maker x3"),
     "W04": CardDef("W04", "W", 3, "Final week 6 runs"),
 }
@@ -455,15 +455,15 @@ def place_board(
 def check_card_satisfied(card_code: str, player: PlayerState, run: RunEvent) -> bool:
     c = card_code
     if c == "A01":
-        return run.distance_km >= tier_value(player.tier, 2.0, 3.0, 4.0)
+        return run.distance_km >= tier_value(player.tier, 3.0, 4.0, 5.0)
     if c == "A02":
-        return run.distance_km >= tier_value(player.tier, 4.0, 5.0, 6.0)
+        return run.distance_km >= tier_value(player.tier, 5.0, 6.0, 7.0)
     if c == "A03":
-        return run.distance_km >= tier_value(player.tier, 6.0, 7.0, 8.0)
+        return run.distance_km >= tier_value(player.tier, 7.0, 8.0, 9.0)
     if c == "A04":
-        return run.duration_min >= tier_value(player.tier, 25.0, 30.0, 35.0)
+        return run.duration_min >= tier_value(player.tier, 30.0, 35.0, 40.0)
     if c == "A05":
-        return run.duration_min >= tier_value(player.tier, 40.0, 45.0, 50.0)
+        return run.duration_min >= tier_value(player.tier, 45.0, 50.0, 55.0)
     if c == "A06":
         return run.did_warmup
     if c == "A07":
@@ -473,18 +473,18 @@ def check_card_satisfied(card_code: str, player: PlayerState, run: RunEvent) -> 
     if c == "A09":
         return run.did_strength
     if c == "A10":
-        return run.is_silent and run.duration_min >= tier_value(player.tier, 20.0, 30.0, 40.0)
+        return run.is_silent and run.duration_min >= tier_value(player.tier, 25.0, 35.0, 45.0)
     if c == "A11":
-        return run.is_new_route and run.distance_km >= tier_value(player.tier, 3.0, 5.0, 7.0)
+        return run.is_new_route and run.distance_km >= tier_value(player.tier, 4.0, 6.0, 8.0)
     if c == "A12":
-        return run.is_build_up and run.duration_min >= tier_value(player.tier, 20.0, 30.0, 40.0)
+        return run.is_build_up and run.duration_min >= tier_value(player.tier, 25.0, 35.0, 45.0)
     if c == "A13":
         return run.did_drills
     if c == "A14":
         return run.did_log
 
     if c == "B01":
-        return run.start_hour >= 18
+        return run.start_hour >= 22
     if c == "B02":
         return run.start_hour < 6
     if c == "B03":
@@ -532,7 +532,7 @@ def check_card_satisfied(card_code: str, player: PlayerState, run: RunEvent) -> 
 
 
 def d_distance_goal_km(tier: Tier) -> float:
-    return {"beginner": 40.0, "intermediate": 60.0, "advanced": 90.0}[tier]
+    return {"beginner": 80.0, "intermediate": 150.0, "advanced": 250.0}[tier]
 
 
 def update_player_with_run(player: PlayerState, run: RunEvent, *, season_cfg: SeasonConfig) -> list[str]:

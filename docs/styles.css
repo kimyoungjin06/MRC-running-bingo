@@ -5,8 +5,8 @@
   --text: rgba(255, 255, 255, 0.92);
   --muted: rgba(255, 255, 255, 0.7);
   --border: rgba(255, 255, 255, 0.12);
-  --accent: #7dd3fc;
-  --accent-2: #a78bfa;
+  --accent: #fbbf24;
+  --accent-2: #f59e0b;
   --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   --radius: 14px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
@@ -22,8 +22,8 @@ html[data-theme="light"] {
   --text: rgba(2, 6, 23, 0.92);
   --muted: rgba(2, 6, 23, 0.7);
   --border: rgba(2, 6, 23, 0.12);
-  --accent: #0284c7;
-  --accent-2: #6d28d9;
+  --accent: #f59e0b;
+  --accent-2: #d97706;
   --shadow: 0 12px 30px rgba(2, 6, 23, 0.12);
 }
 
@@ -39,8 +39,8 @@ body {
 body {
   margin: 0;
   font-family: var(--sans);
-  background: radial-gradient(1200px 800px at 20% 0%, rgba(125, 211, 252, 0.15), transparent 55%),
-    radial-gradient(1200px 800px at 80% 10%, rgba(167, 139, 250, 0.14), transparent 60%), var(--bg);
+  background: radial-gradient(1200px 800px at 20% 0%, rgba(251, 191, 36, 0.18), transparent 55%),
+    radial-gradient(1200px 800px at 80% 10%, rgba(251, 146, 60, 0.14), transparent 60%), var(--bg);
   color: var(--text);
   line-height: 1.6;
 }
