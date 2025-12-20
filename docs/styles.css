@@ -555,6 +555,19 @@ a:hover {
   font-size: 0.95rem;
 }
 
+.field select:focus,
+.field select:focus-visible,
+.field select:active {
+  color: #0b1020;
+  background-color: #f8fafc;
+}
+
+html[data-theme="light"] .field select:focus,
+html[data-theme="light"] .field select:focus-visible,
+html[data-theme="light"] .field select:active {
+  background-color: #ffffff;
+}
+
 .field select option {
   color: #0b1020;
   background-color: #f8fafc;
