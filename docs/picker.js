@@ -123,6 +123,221 @@ const refs = {
   copyBtn: document.getElementById("copyBtn"),
 };
 
+const customSelectStates = [];
+let customSelectEventsBound = false;
+
+function syncCustomSelect(state) {
+  const selectedIndex = state.select.selectedIndex >= 0 ? state.select.selectedIndex : 0;
+  const selectedOption = state.select.options[selectedIndex];
+  state.selectedIndex = selectedIndex;
+  state.label.textContent = selectedOption ? selectedOption.textContent : "선택";
+  state.options.forEach((opt, idx) => {
+    const isSelected = idx === selectedIndex;
+    opt.button.setAttribute("aria-selected", isSelected ? "true" : "false");
+    opt.button.classList.toggle("is-selected", isSelected);
+    if (!opt.disabled) opt.button.tabIndex = isSelected ? 0 : -1;
+  });
+  state.button.disabled = !!state.select.disabled;
+}
+
+function closeCustomSelect(state) {
+  if (!state.open) return;
+  state.open = false;
+  state.wrapper.classList.remove("is-open");
+  state.button.setAttribute("aria-expanded", "false");
+}
+
+function openCustomSelect(state, focusSelected) {
+  if (state.open) return;
+  customSelectStates.forEach((item) => {
+    if (item !== state) closeCustomSelect(item);
+  });
+  state.open = true;
+  state.wrapper.classList.add("is-open");
+  state.button.setAttribute("aria-expanded", "true");
+  if (focusSelected) {
+    const target = state.options[state.selectedIndex];
+    if (target && !target.disabled) {
+      requestAnimationFrame(() => target.button.focus());
+    }
+  }
+}
+
+function toggleCustomSelect(state, focusSelected) {
+  if (state.open) closeCustomSelect(state);
+  else openCustomSelect(state, focusSelected);
+}
+
+function findNextOption(state, startIndex, direction) {
+  const total = state.options.length;
+  for (let offset = 1; offset <= total; offset += 1) {
+    const idx = (startIndex + direction * offset + total) % total;
+    if (!state.options[idx].disabled) return idx;
+  }
+  return startIndex;
+}
+
+function selectCustomOption(state, idx) {
+  const option = state.options[idx];
+  if (!option || option.disabled) return;
+  state.select.value = option.value;
+  state.select.dispatchEvent(new Event("change", { bubbles: true }));
+  syncCustomSelect(state);
+  closeCustomSelect(state);
+  state.button.focus();
+}
+
+function buildCustomSelect(select) {
+  if (select.dataset.customReady === "true") return null;
+  select.dataset.customReady = "true";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "custom-select";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "custom-select__button";
+  button.setAttribute("aria-haspopup", "listbox");
+  button.setAttribute("aria-expanded", "false");
+
+  const labelSpan = document.createElement("span");
+  labelSpan.className = "custom-select__label";
+  button.appendChild(labelSpan);
+
+  const caret = document.createElement("span");
+  caret.className = "custom-select__caret";
+  button.appendChild(caret);
+
+  const list = document.createElement("div");
+  list.className = "custom-select__list";
+  list.setAttribute("role", "listbox");
+
+  const fallbackId = `custom-select-${customSelectStates.length + 1}`;
+  const baseId = select.id || fallbackId;
+  const listId = `${baseId}-list`;
+  const buttonId = `${baseId}-button`;
+  list.id = listId;
+  button.id = buttonId;
+  button.setAttribute("aria-controls", listId);
+  list.setAttribute("aria-labelledby", buttonId);
+
+  select.classList.add("custom-select__native");
+  select.tabIndex = -1;
+  select.setAttribute("aria-hidden", "true");
+
+  const state = {
+    select,
+    wrapper,
+    button,
+    label: labelSpan,
+    list,
+    options: [],
+    selectedIndex: 0,
+    open: false,
+  };
+
+  Array.from(select.options).forEach((opt, idx) => {
+    const optionButton = document.createElement("button");
+    optionButton.type = "button";
+    optionButton.className = "custom-select__option";
+    optionButton.setAttribute("role", "option");
+    optionButton.dataset.value = opt.value;
+    optionButton.textContent = opt.textContent;
+    optionButton.tabIndex = -1;
+    if (opt.disabled) {
+      optionButton.disabled = true;
+      optionButton.classList.add("is-disabled");
+    }
+    optionButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      selectCustomOption(state, idx);
+    });
+    optionButton.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        const nextIdx = findNextOption(state, idx, direction);
+        state.options[nextIdx].button.focus();
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectCustomOption(state, idx);
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCustomSelect(state);
+        state.button.focus();
+      }
+    });
+    state.options.push({
+      button: optionButton,
+      value: opt.value,
+      disabled: opt.disabled,
+    });
+    list.appendChild(optionButton);
+  });
+
+  const field = select.closest(".field");
+  const label = field ? field.querySelector(`label[for="${select.id}"]`) : null;
+  if (label) {
+    if (!label.id) label.id = `${baseId}-label`;
+    button.setAttribute("aria-labelledby", label.id);
+    label.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleCustomSelect(state, true);
+      button.focus();
+    });
+  } else {
+    button.setAttribute("aria-label", select.name || "선택");
+  }
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    toggleCustomSelect(state, true);
+  });
+  button.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openCustomSelect(state, true);
+    }
+  });
+
+  select.addEventListener("change", () => syncCustomSelect(state));
+
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+  wrapper.appendChild(button);
+  wrapper.appendChild(list);
+
+  syncCustomSelect(state);
+  return state;
+}
+
+function initCustomSelects() {
+  const selects = Array.from(document.querySelectorAll("select[data-custom-select]"));
+  if (selects.length === 0) return;
+
+  selects.forEach((select) => {
+    const state = buildCustomSelect(select);
+    if (state) customSelectStates.push(state);
+  });
+
+  if (customSelectEventsBound) return;
+  customSelectEventsBound = true;
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".custom-select")) return;
+    customSelectStates.forEach((state) => closeCustomSelect(state));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    customSelectStates.forEach((state) => closeCustomSelect(state));
+  });
+}
+
 function hashString(str) {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
@@ -709,6 +924,7 @@ function handleCopy() {
 }
 
 function init() {
+  initCustomSelects();
   refs.seedDisplay.textContent = SEASON_SEED;
   state.cards = buildCards(SEASON_SEED);
   state.cardsById = Object.fromEntries(state.cards.map((card) => [card.id, card]));

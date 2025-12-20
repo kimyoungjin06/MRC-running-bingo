@@ -22,7 +22,6 @@ const defaults = {
   tier: "beginner",
   date: "",
   summary: "6.2km · 42분",
-  boardId: "BINGGO-0001",
   note: "오늘의 한 줄을 적어주세요.",
   placeholder: true,
 };
@@ -32,7 +31,6 @@ const refs = {
   tier: document.getElementById("tplTier"),
   date: document.getElementById("tplDate"),
   summary: document.getElementById("tplSummary"),
-  boardId: document.getElementById("tplBoardId"),
   note: document.getElementById("tplNote"),
   placeholder: document.getElementById("tplPlaceholder"),
   downloadBtn: document.getElementById("downloadBtn"),
@@ -96,7 +94,7 @@ function drawBoardPlaceholder() {
   boardCtx.textBaseline = "middle";
   boardCtx.fillText("빙고판을 불러오지 못했습니다", width / 2, height / 2 - 16);
   boardCtx.font = '500 20px "Segoe UI", system-ui, sans-serif';
-  boardCtx.fillText("이름 또는 빙고판 ID를 확인해 주세요", width / 2, height / 2 + 18);
+  boardCtx.fillText("이름을 확인해 주세요", width / 2, height / 2 + 18);
   boardCtx.textAlign = "left";
   boardCtx.textBaseline = "alphabetic";
 }
@@ -273,7 +271,6 @@ function drawTemplate() {
   const tierValue = tierLabels[refs.tier.value] || tierLabels[defaults.tier];
   const dateValue = formatDate(refs.date.value || defaults.date);
   const summary = getValue(refs.summary, defaults.summary);
-  const boardId = getValue(refs.boardId, defaults.boardId);
   const note = getValue(refs.note, defaults.note);
 
   drawField("이름", name, leftX, rowY1, columnWidth);
@@ -282,17 +279,18 @@ function drawTemplate() {
   drawField("날짜", dateValue, leftX, rowY1 + rowGap, columnWidth, { valueSize: 28 });
   drawField("러닝 요약", summary, rightX, rowY1 + rowGap, columnWidth, { valueSize: 28 });
 
-  drawField("빙고판 ID", boardId, leftX, rowY1 + rowGap * 2, columnWidth, { valueSize: 26 });
-  drawField("한 줄 기록", note, rightX, rowY1 + rowGap * 2, columnWidth, {
+  drawField("한 줄 기록", note, leftX, rowY1 + rowGap * 2, infoW - padding * 2, {
     valueSize: 24,
     lineHeight: 30,
     maxLines: 2,
   });
 
   ctx.textAlign = "right";
-  ctx.font = '500 18px "Segoe UI", system-ui, sans-serif';
+  ctx.font = '600 18px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.fillText("instagram@modu_running", width - 90, height - 56);
   ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-  ctx.fillText("MRC Binggo 2025W", width - 90, height - 42);
+  ctx.fillText("#모두의러닝겨울방학빙고게임", width - 90, height - 30);
   ctx.textAlign = "left";
 }
 
@@ -302,18 +300,10 @@ function normalizeValue(value) {
 
 function findBoardMatch() {
   if (!boards || boards.length === 0) return null;
-  const idInput = normalizeValue(refs.boardId.value);
   const nameInput = normalizeValue(refs.name.value);
 
   let matches = [];
-  if (idInput) {
-    matches = boards.filter((board) => {
-      const boardId = normalizeValue(board.id);
-      const playerId = normalizeValue(board.player_id);
-      const boardName = normalizeValue(board.name);
-      return boardId === idInput || playerId === idInput || boardName === idInput;
-    });
-  } else if (nameInput) {
+  if (nameInput) {
     matches = boards.filter((board) => normalizeValue(board.name) === nameInput);
   }
 
@@ -365,7 +355,7 @@ function drawBoardGrid(board) {
   boardCtx.fillRect(0, 0, width, height);
 
   const padding = 32;
-  const headerHeight = 96;
+  const headerHeight = 120;
   const gridSize = Math.min(width - padding * 2, height - padding * 2 - headerHeight);
   const gridX = (width - gridSize) / 2;
   const gridY = padding + headerHeight;
@@ -376,15 +366,27 @@ function drawBoardGrid(board) {
   boardCtx.fill();
 
   const name = board?.name || getValue(refs.name, defaults.name);
-  const boardId = board?.id ? `#${board.id.slice(0, 8)}` : "빙고판";
   boardCtx.fillStyle = palette.text;
   boardCtx.font = '700 34px "Segoe UI", system-ui, sans-serif';
   boardCtx.textAlign = "left";
-  boardCtx.fillText(`${name} · ${boardId}`, padding, padding + 34);
-  boardCtx.font = '500 20px "Segoe UI", system-ui, sans-serif';
+  boardCtx.fillText(name, padding, padding + 34);
+  boardCtx.font = '600 20px "Segoe UI", system-ui, sans-serif';
   boardCtx.fillStyle = palette.muted;
-  const timeText = board?.timestamp ? formatDate(board.timestamp.slice(0, 10)) : formatDate(refs.date.value);
-  boardCtx.fillText(`빙고판 생성일 ${timeText}`, padding, padding + 66);
+  boardCtx.fillText("instagram@modu_running", padding, padding + 66);
+
+  if (images.logo) {
+    const logoWidth = 140;
+    const logoHeight = (logoWidth / images.logo.width) * images.logo.height;
+    const logoX = width - padding - logoWidth;
+    const logoY = padding - 6;
+    boardCtx.drawImage(images.logo, logoX, logoY, logoWidth, logoHeight);
+  }
+
+  boardCtx.textAlign = "right";
+  boardCtx.font = '600 18px "Segoe UI", system-ui, sans-serif';
+  boardCtx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  boardCtx.fillText("#모두의러닝겨울방학빙고게임", width - padding, padding + 90);
+  boardCtx.textAlign = "left";
 
   const grid = board?.grid || [];
   for (let row = 0; row < 5; row += 1) {
@@ -431,7 +433,7 @@ function renderBoard() {
   if (!refs.boardCanvas) return;
   const board = findBoardMatch();
   if (!board) {
-    setBoardStatus("빙고판을 찾지 못했습니다. 이름 또는 빙고판 ID를 입력해 주세요.");
+    setBoardStatus("빙고판을 찾지 못했습니다. 이름을 입력해 주세요.");
     drawBoardPlaceholder();
     return;
   }
@@ -476,7 +478,6 @@ function applyDefaults() {
   refs.name.value = defaults.name;
   refs.tier.value = defaults.tier;
   refs.summary.value = defaults.summary;
-  refs.boardId.value = defaults.boardId;
   refs.note.value = defaults.note;
   refs.placeholder.checked = defaults.placeholder;
   refs.date.value = new Date().toISOString().slice(0, 10);
@@ -488,7 +489,6 @@ function bindInputs() {
     refs.tier,
     refs.date,
     refs.summary,
-    refs.boardId,
     refs.note,
     refs.placeholder,
   ];
@@ -524,9 +524,6 @@ async function init() {
     refs.boardDownloadBtn.addEventListener("click", downloadBoard);
   }
 
-  if (refs.boardId) {
-    refs.boardId.addEventListener("input", renderBoard);
-  }
   if (refs.name) {
     refs.name.addEventListener("input", renderBoard);
   }
