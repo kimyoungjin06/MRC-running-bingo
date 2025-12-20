@@ -254,8 +254,7 @@ function updateThemeButton() {
 function updateLogo() {
   const logo = document.getElementById("brandLogo");
   if (!logo) return;
-  const effective = getEffectiveTheme();
-  logo.src = effective === "light" ? "./assets/logo_yellow.png" : "./assets/logo_white.jpg";
+  logo.src = "./assets/logo_yellow.png";
 }
 
 function wireSearch() {
