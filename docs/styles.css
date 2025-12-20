@@ -555,6 +555,16 @@ a:hover {
   font-size: 0.95rem;
 }
 
+.field select option {
+  color: #0b1020;
+  background-color: #f8fafc;
+}
+
+html[data-theme="light"] .field select option {
+  color: #0b1020;
+  background-color: #ffffff;
+}
+
 .field input::placeholder {
   color: var(--muted);
 }
