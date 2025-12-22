@@ -1,4 +1,10 @@
 const PAGES = {
+  quick: {
+    title: "간략",
+    file: "quick.md",
+    meta: "핵심만 빠르게 보는 요약",
+    githubPath: "README.md",
+  },
   intro: {
     title: "소개",
     file: "intro.md",
@@ -175,12 +181,13 @@ function getGitHubRepoInfo() {
 }
 
 function getPageKeyFromHash() {
-  const raw = (window.location.hash || "#intro").slice(1).trim().toLowerCase();
-  if (!raw) return "intro";
+  const raw = (window.location.hash || "#quick").slice(1).trim().toLowerCase();
+  if (!raw) return "quick";
+  if (raw === "short" || raw === "brief" || raw === "summary") return "quick";
   if (raw === "formanager" || raw === "for-manager" || raw === "manager" || raw === "for")
     return "formanager";
   if (PAGES[raw]) return raw;
-  return "intro";
+  return "quick";
 }
 
 function setActiveNav(pageKey) {
