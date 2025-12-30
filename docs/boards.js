@@ -1,5 +1,40 @@
-const DATA_URL = "./data/boards.json";
-const PROGRESS_URL = "./data/progress.json";
+const DEFAULT_DATA_URL = "./data/boards.json";
+const DEFAULT_PROGRESS_URL = "./data/progress.json";
+const AUTO_REFRESH_MS = 60000;
+const DEFAULT_SEED = "2025W";
+const CARDDECK_URL = "./content/carddeck.md";
+
+const labelMapCache = new Map();
+let cardDeckCache = null;
+let cardDeckPromise = null;
+
+function normalizeBaseUrl(url) {
+  return (url || "").trim().replace(/\/+$/, "");
+}
+
+function getApiBase() {
+  const stored = localStorage.getItem("mrc_submit_api_base") || "";
+  return normalizeBaseUrl(stored);
+}
+
+function getDataUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const queryUrl = params.get("data");
+  if (queryUrl) return queryUrl;
+  const base = getApiBase();
+  return base ? `${base}/api/v1/boards` : DEFAULT_DATA_URL;
+}
+
+function getProgressUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const queryUrl = params.get("progress");
+  if (queryUrl) return queryUrl;
+  const base = getApiBase();
+  return base ? `${base}/api/v1/progress` : DEFAULT_PROGRESS_URL;
+}
+
+const DATA_URL = getDataUrl();
+const PROGRESS_URL = getProgressUrl();
 
 const refs = {
   boardsContainer: document.getElementById("boardsContainer"),
@@ -10,15 +45,171 @@ const refs = {
 
 let allBoards = [];
 let progressLookup = { byId: new Map(), byName: new Map() };
+let noticeMessage = "";
 
 function setMessage(text) {
   refs.boardsMessage.textContent = text || "";
+}
+
+function setNotice(text) {
+  noticeMessage = text || "";
 }
 
 function formatTimestamp(value) {
   if (!value) return "";
   if (value.includes("T")) return value.replace("T", " ").slice(0, 16);
   return value;
+}
+
+function hashString(value) {
+  let h = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed) {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleInPlace(items, rng) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+}
+
+function parseCardDeck(text) {
+  const map = new Map();
+  const pattern = /^([ABCDW]\d{2})\s+(★+)\s+(.+)$/;
+  text.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    const match = trimmed.match(pattern);
+    if (!match) return;
+    const code = match[1];
+    const stars = match[2].length;
+    const title = match[3].trim();
+    map.set(code, { code, type: code[0], stars, title });
+  });
+  return map;
+}
+
+async function loadCardDeck() {
+  if (cardDeckCache) return cardDeckCache;
+  if (!cardDeckPromise) {
+    cardDeckPromise = fetch(CARDDECK_URL, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("card deck load failed");
+        return res.text();
+      })
+      .then((text) => {
+        cardDeckCache = parseCardDeck(text);
+        return cardDeckCache;
+      })
+      .catch(() => {
+        cardDeckCache = null;
+        return null;
+      });
+  }
+  return cardDeckPromise;
+}
+
+function buildLabelMap(seed, cardDeck) {
+  const rng = mulberry32(hashString(seed));
+  const byId = new Map();
+  const byLabel = new Map();
+  const codesByType = { A: [], B: [], C: [], D: [], W: [] };
+
+  for (const code of cardDeck.keys()) {
+    const type = code[0];
+    if (codesByType[type]) codesByType[type].push(code);
+  }
+
+  Object.keys(codesByType).forEach((type) => {
+    const codes = codesByType[type].slice().sort();
+    const labels = codes.slice();
+    shuffleInPlace(labels, rng);
+    codes.forEach((code, idx) => {
+      const label = labels[idx];
+      byId.set(code, label);
+      byLabel.set(label, code);
+    });
+  });
+
+  return { seed, byId, byLabel };
+}
+
+function getLabelMap(seed, cardDeck) {
+  if (labelMapCache.has(seed)) return labelMapCache.get(seed);
+  const map = buildLabelMap(seed, cardDeck);
+  labelMapCache.set(seed, map);
+  return map;
+}
+
+function hasLabelFields(data) {
+  const boards = Array.isArray(data?.boards) ? data.boards : [];
+  for (const board of boards) {
+    const grid = Array.isArray(board?.grid) ? board.grid : [];
+    for (const row of grid) {
+      for (const cell of row || []) {
+        if (cell && typeof cell === "object" && "label" in cell) return true;
+      }
+    }
+  }
+  return false;
+}
+
+async function applyLabelMapIfNeeded(data) {
+  if (!data || typeof data !== "object") return false;
+  if (data.label_map_applied || data.code_basis === "actual" || hasLabelFields(data)) return false;
+
+  const seed = String(data.label_map_seed || DEFAULT_SEED).trim() || DEFAULT_SEED;
+  const cardDeck = await loadCardDeck();
+  if (!cardDeck || cardDeck.size === 0) return false;
+
+  const labelMap = getLabelMap(seed, cardDeck);
+  let updated = false;
+  const boards = Array.isArray(data.boards) ? data.boards : [];
+
+  boards.forEach((board) => {
+    const grid = Array.isArray(board?.grid) ? board.grid : [];
+    grid.forEach((row) => {
+      (row || []).forEach((cell) => {
+        if (!cell || typeof cell !== "object") return;
+        const label = cell.code;
+        if (!label) return;
+        const actual = labelMap.byLabel.get(label);
+        if (!actual) return;
+
+        const card = cardDeck.get(actual);
+        if (card) {
+          cell.type = card.type;
+          cell.stars = card.stars;
+          cell.title = card.title;
+        }
+
+        if (actual !== label) {
+          cell.label = cell.label || label;
+          cell.code = actual;
+          updated = true;
+        }
+      });
+    });
+  });
+
+  if (updated) {
+    data.label_map_applied = true;
+    data.code_basis = "actual";
+    data.label_map_seed = seed;
+  }
+  return updated;
 }
 
 function createCell(cell, isChecked) {
@@ -112,43 +303,71 @@ function renderBoards(filterText) {
   refs.boardsCount.textContent = `${filtered.length} boards`;
 
   if (filtered.length === 0) {
-    setMessage(keyword ? "검색 결과가 없습니다." : "표시할 빙고판이 없습니다.");
+    const base = keyword ? "검색 결과가 없습니다." : "표시할 빙고판이 없습니다.";
+    setMessage(noticeMessage ? `${noticeMessage} · ${base}` : base);
     return;
   }
 
-  setMessage("");
+  setMessage(noticeMessage);
   filtered.forEach((board) => refs.boardsContainer.append(createBoardCard(board)));
 }
 
 async function loadBoards() {
   try {
-    const [boardsRes, progressRes] = await Promise.all([
-      fetch(DATA_URL, { cache: "no-store" }),
-      fetch(PROGRESS_URL, { cache: "no-store" }),
-    ]);
-    if (!boardsRes.ok) throw new Error(`데이터 로드 실패: ${boardsRes.status}`);
-    const boardsJson = await boardsRes.json();
+    let usedFallback = false;
+    const boardsJson = await fetch(DATA_URL, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`데이터 로드 실패: ${res.status}`);
+        return res.json();
+      })
+      .catch(async () => {
+        if (DATA_URL === DEFAULT_DATA_URL) throw new Error("boards fallback failed");
+        usedFallback = true;
+        const res = await fetch(DEFAULT_DATA_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`데이터 로드 실패: ${res.status}`);
+        return res.json();
+      });
+    await applyLabelMapIfNeeded(boardsJson);
     allBoards = Array.isArray(boardsJson.boards) ? boardsJson.boards : [];
 
     progressLookup = { byId: new Map(), byName: new Map() };
-    if (progressRes.ok) {
-      const progressJson = await progressRes.json();
+    try {
+      let progressFallback = false;
+      const progressJson = await fetch(PROGRESS_URL, { cache: "no-store" })
+        .then((res) => {
+          if (!res.ok) throw new Error(`progress load failed: ${res.status}`);
+          return res.json();
+        })
+        .catch(async () => {
+          if (PROGRESS_URL === DEFAULT_PROGRESS_URL) throw new Error("progress fallback failed");
+          progressFallback = true;
+          const res = await fetch(DEFAULT_PROGRESS_URL, { cache: "no-store" });
+          if (!res.ok) throw new Error(`progress load failed: ${res.status}`);
+          return res.json();
+        });
       const players = Array.isArray(progressJson.players) ? progressJson.players : [];
       players.forEach((player) => {
         if (player.id) progressLookup.byId.set(player.id, player);
         if (player.name) progressLookup.byName.set(player.name, player);
       });
+      usedFallback = usedFallback || progressFallback;
+    } catch {
+      progressLookup = { byId: new Map(), byName: new Map() };
     }
 
+    setNotice(usedFallback ? "서버 접속 불가: 예시 데이터 표시 중" : "");
     renderBoards(refs.boardSearch.value);
   } catch (err) {
-    setMessage("boards.json을 불러오지 못했습니다. tools/generate_boards.py 실행 후 다시 시도하세요.");
+    setMessage("boards.json을 불러오지 못했습니다. 서버 주소 또는 업로드 상태를 확인하세요.");
   }
 }
 
 function init() {
   refs.boardSearch.addEventListener("input", (e) => renderBoards(e.target.value));
   loadBoards();
+  if (AUTO_REFRESH_MS > 0) {
+    setInterval(loadBoards, AUTO_REFRESH_MS);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);

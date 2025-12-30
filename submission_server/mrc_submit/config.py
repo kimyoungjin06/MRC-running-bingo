@@ -28,6 +28,7 @@ class Settings:
     storage_dir: Path
     allowed_origins: list[str]
     api_key: str | None
+    admin_key: str | None
     max_file_bytes: int
     max_files: int
 
@@ -41,6 +42,7 @@ def load_settings(*, base_dir: Path) -> Settings:
 
     allowed_origins = _parse_csv(os.getenv("MRC_SUBMIT_ALLOWED_ORIGINS")) or ["*"]
     api_key = os.getenv("MRC_SUBMIT_API_KEY") or None
+    admin_key = os.getenv("MRC_ADMIN_KEY") or None
 
     max_file_mb = _parse_int(os.getenv("MRC_SUBMIT_MAX_FILE_MB"), 15)
     max_files = _parse_int(os.getenv("MRC_SUBMIT_MAX_FILES"), 5)
@@ -51,6 +53,7 @@ def load_settings(*, base_dir: Path) -> Settings:
         storage_dir=storage_dir,
         allowed_origins=allowed_origins,
         api_key=api_key,
+        admin_key=admin_key,
         max_file_bytes=max_file_mb * 1024 * 1024,
         max_files=max_files,
     )

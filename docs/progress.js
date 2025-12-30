@@ -1,4 +1,23 @@
-const DATA_URL = "./data/progress.json";
+const DEFAULT_DATA_URL = "./data/progress.json";
+
+function normalizeBaseUrl(url) {
+  return (url || "").trim().replace(/\/+$/, "");
+}
+
+function getApiBase() {
+  const stored = localStorage.getItem("mrc_submit_api_base") || "";
+  return normalizeBaseUrl(stored);
+}
+
+function getDataUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const queryUrl = params.get("data");
+  if (queryUrl) return queryUrl;
+  const base = getApiBase();
+  return base ? `${base}/api/v1/progress` : DEFAULT_DATA_URL;
+}
+
+const DATA_URL = getDataUrl();
 
 const refs = {
   generatedAt: document.getElementById("generatedAt"),
@@ -174,9 +193,19 @@ function renderProgressTable(players, keyword) {
 
 async function loadProgress() {
   try {
-    const res = await fetch(DATA_URL, { cache: "no-store" });
-    if (!res.ok) throw new Error(`데이터 로드 실패: ${res.status}`);
-    const data = await res.json();
+    let usedFallback = false;
+    const data = await fetch(DATA_URL, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`데이터 로드 실패: ${res.status}`);
+        return res.json();
+      })
+      .catch(async () => {
+        if (DATA_URL === DEFAULT_DATA_URL) throw new Error("progress fallback failed");
+        usedFallback = true;
+        const res = await fetch(DEFAULT_DATA_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`데이터 로드 실패: ${res.status}`);
+        return res.json();
+      });
 
     refs.generatedAt.textContent = `최근 업데이트: ${formatTime(data.generated_at) || "-"}`;
     renderSummary(data.summary || {});
@@ -185,6 +214,7 @@ async function loadProgress() {
     allPlayers = Array.isArray(data.players) ? data.players : [];
     renderSprint(allPlayers);
     renderProgressTable(allPlayers, refs.progressSearch.value.trim());
+    setMessage(refs.topMessage, usedFallback ? "서버 접속 불가: 예시 데이터 표시 중" : "");
   } catch (err) {
     setMessage(refs.topMessage, "progress.json을 불러오지 못했습니다. 매일 업데이트 후 다시 확인하세요.");
     setMessage(refs.progressMessage, "progress.json을 불러오지 못했습니다.");

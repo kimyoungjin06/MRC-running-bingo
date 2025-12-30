@@ -1,18 +1,26 @@
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import date, datetime, time, timedelta
+import html
+import json
+import mimetypes
+import os
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
+from .boards import generate_boards_from_xlsx, load_boards_json, parse_carddeck, write_boards_json
 from .cards import CARDS, CARDS_BY_TYPE
 from .config import load_settings
+from .jobs import run_publish
 from .label_map import build_label_map
 from .storage import Storage, new_submission_id, utc_now_iso
-from .validation import RunPayload, evaluate_card, normalize_tier, validate_claim_labels
+from .validation import RunPayload, evaluate_card, normalize_claim_labels, normalize_tier, tier_value, validate_claim_labels
 
 
 DEFAULT_SEED = "2025W"
@@ -86,6 +94,51 @@ def _client_ip(request: Request) -> str | None:
     return None
 
 
+def _load_board_codes(storage_dir: Path, *, carddeck_path: Path, seed: str, map_labels: bool) -> dict[str, set[str]]:
+    env_path = os.getenv("MRC_BOARDS_PATH")
+    boards_path = Path(env_path) if env_path else storage_dir / "boards" / "boards.json"
+    data = load_boards_json(
+        boards_path,
+        carddeck_path=carddeck_path,
+        label_seed=seed,
+        apply_label_map=map_labels,
+    )
+    if not data:
+        return {}
+    result: dict[str, set[str]] = {}
+    for board in data.get("boards", []) if isinstance(data, dict) else []:
+        name = (board or {}).get("name")
+        if not name:
+            continue
+        grid = (board or {}).get("grid", [])
+        codes = {
+            cell.get("code")
+            for row in grid
+            for cell in (row or [])
+            if isinstance(cell, dict) and cell.get("code")
+        }
+        if codes:
+            result[name] = codes
+    return result
+
+
+def _admin_key_from(request: Request, form: dict | None = None) -> str:
+    if "x-mrc-admin-key" in request.headers:
+        return request.headers.get("x-mrc-admin-key") or ""
+    if request.query_params.get("key"):
+        return request.query_params.get("key") or ""
+    if form:
+        return str(form.get("admin_key") or "")
+    return ""
+
+
+def _require_admin(settings, request: Request, form: dict | None = None) -> str:
+    key = _admin_key_from(request, form)
+    if settings.admin_key and key != settings.admin_key:
+        raise HTTPException(status_code=401, detail="admin key required")
+    return key
+
+
 async def _read_upload_limited(upload: UploadFile, *, max_bytes: int) -> bytes:
     data = bytearray()
     chunk_size = 1024 * 1024
@@ -109,6 +162,556 @@ def _split_csvish(raw: list[str]) -> list[str]:
     return out
 
 
+def _validation_summary(validation: dict | list) -> str:
+    if isinstance(validation, dict):
+        cards = validation.get("cards")
+    else:
+        cards = validation
+    if not cards:
+        return "-"
+    passed = sum(1 for v in cards if v.get("status") == "passed")
+    failed = sum(1 for v in cards if v.get("status") == "failed")
+    needs = sum(1 for v in cards if v.get("status") == "needs_review")
+    return f"통과 {passed} / 실패 {failed} / 확인 {needs}"
+
+
+def _load_card_titles(carddeck_path: Path) -> dict[str, str]:
+    try:
+        cards = parse_carddeck(carddeck_path)
+    except (FileNotFoundError, OSError, ValueError):
+        return {}
+    return {code: card.title for code, card in cards.items()}
+
+
+def _format_card_list(
+    validation: dict | list,
+    card_titles: dict[str, str],
+    *,
+    fallback_codes: list[str] | None = None,
+) -> str:
+    cards = validation.get("cards") if isinstance(validation, dict) else validation
+    if not cards:
+        if not fallback_codes:
+            return "-"
+        items = []
+        for code in fallback_codes:
+            title = card_titles.get(code, "")
+            title_html = f' <span class="card-title">{html.escape(title)}</span>' if title else ""
+            items.append(f"<li><span class=\"card-code\">{html.escape(code)}</span>{title_html}</li>")
+        return f"<ul class=\"card-list\">{''.join(items)}</ul>"
+
+    items = []
+    for item in cards:
+        label = item.get("label") or item.get("resolved_code") or "-"
+        resolved = item.get("resolved_code") or item.get("label") or ""
+        title = card_titles.get(resolved) or card_titles.get(label) or ""
+        status = item.get("status")
+        status_text = _card_status_label(status)
+        status_html = (
+            f' <span class="card-status card-status--{html.escape(status)}">{html.escape(status_text)}</span>'
+            if status
+            else ""
+        )
+        title_html = f' <span class="card-title">{html.escape(title)}</span>' if title else ""
+        items.append(f"<li><span class=\"card-code\">{html.escape(label)}</span>{title_html}{status_html}</li>")
+    return f"<ul class=\"card-list\">{''.join(items)}</ul>"
+
+
+def _load_submission_meta(storage: Storage, submission_id: str) -> dict[str, Any] | None:
+    meta_path = storage.submissions_dir / submission_id / "meta.json"
+    if not meta_path.exists():
+        return None
+    try:
+        return json.loads(meta_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
+def _parse_iso_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _week_bounds(value: date) -> tuple[date, date]:
+    start = value - timedelta(days=value.weekday())
+    end = start + timedelta(days=6)
+    return start, end
+
+
+def _tier_label(tier: str | None) -> str:
+    if tier == "beginner":
+        return "초보"
+    if tier == "intermediate":
+        return "중수"
+    if tier == "advanced":
+        return "고수"
+    return tier or "-"
+
+
+def _unique_preserve(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        out.append(value)
+    return out
+
+
+def _run_publish_now(storage_dir: Path) -> tuple[bool, str]:
+    try:
+        tz_name = os.getenv("MRC_JOB_TIMEZONE", "Asia/Seoul")
+        tz = ZoneInfo(tz_name)
+        seed = os.getenv("MRC_SEED", DEFAULT_SEED)
+        run_publish(storage_dir=storage_dir, tz=tz, seed=seed)
+        return True, "업데이트 반영 완료"
+    except Exception:
+        return False, "업데이트 반영 실패"
+
+
+def _status_label(value: str | None) -> str:
+    mapping = {
+        "pending": "대기",
+        "approved": "승인",
+        "rejected": "반려",
+        "all": "전체",
+    }
+    if not value:
+        return "-"
+    return mapping.get(value.lower(), value)
+
+
+def _card_status_label(value: str | None) -> str:
+    mapping = {
+        "passed": "통과",
+        "failed": "실패",
+        "needs_review": "확인 필요",
+    }
+    if not value:
+        return "-"
+    return mapping.get(value, value)
+
+
+def _format_created_at(value: str | None) -> str:
+    if not value:
+        return "-"
+    try:
+        dt = datetime.fromisoformat(value)
+        tz_name = os.getenv("MRC_JOB_TIMEZONE", "Asia/Seoul")
+        tz = ZoneInfo(tz_name)
+        if dt.tzinfo:
+            dt = dt.astimezone(tz)
+        return dt.replace(microsecond=0).isoformat(sep=" ")
+    except ValueError:
+        text = value.replace("T", " ")
+        if "." in text:
+            text = text.split(".", 1)[0]
+        return text
+
+
+def _format_run_date(value: str | None) -> str:
+    if not value:
+        return "-"
+    try:
+        run_date = date.fromisoformat(value)
+    except ValueError:
+        return value
+    weekday = "월화수목금토일"[run_date.weekday()]
+    return f"{run_date.isoformat()} ({weekday})"
+
+
+def _format_boards_meta(meta: dict | None, fallback_name: str) -> str:
+    if not meta:
+        return "없음"
+    source = str(meta.get("source") or fallback_name)
+    source_name = Path(source).name
+    if source_name.startswith("upload-"):
+        source_name = source_name[len("upload-") :]
+    generated_at = _format_created_at(meta.get("generated_at"))
+    return f"{source_name} · 생성 {generated_at}"
+
+
+def _build_submission_indexes(items: list[dict]) -> tuple[dict[date, list[str]], dict[str, list[date]]]:
+    by_date: dict[date, list[str]] = {}
+    by_player: dict[str, list[date]] = {}
+    for item in items:
+        name = item.get("player_name")
+        run_date = _parse_iso_date(item.get("run_date"))
+        if not name or not run_date:
+            continue
+        by_date.setdefault(run_date, []).append(name)
+        by_player.setdefault(name, []).append(run_date)
+    for key, names in list(by_date.items()):
+        by_date[key] = _unique_preserve(names)
+    for key, dates in list(by_player.items()):
+        by_player[key] = sorted(set(dates))
+    return by_date, by_player
+
+
+def _build_insights(item: dict, *, by_date: dict[date, list[str]], by_player: dict[str, list[date]]) -> str:
+    codes = item.get("resolved_codes") or []
+    if not codes:
+        return "-"
+
+    run_date = _parse_iso_date(item.get("run_date"))
+    name = item.get("player_name") or "-"
+    tier = item.get("tier") or "-"
+    distance_km = item.get("distance_km")
+    duration_min = item.get("duration_min")
+    insights: list[str] = []
+
+    for code in codes:
+        if code == "A01":
+            threshold = tier_value(tier, 3.0, 4.0, 5.0)
+            value = f"{distance_km}km" if distance_km is not None else "거리 입력 필요"
+            insights.append(f"A01 기준: {_tier_label(tier)} {threshold}km, 제출 {value}")
+        elif code == "A02":
+            threshold = tier_value(tier, 5.0, 6.0, 7.0)
+            value = f"{distance_km}km" if distance_km is not None else "거리 입력 필요"
+            insights.append(f"A02 기준: {_tier_label(tier)} {threshold}km, 제출 {value}")
+        elif code == "A03":
+            threshold = tier_value(tier, 7.0, 8.0, 9.0)
+            value = f"{distance_km}km" if distance_km is not None else "거리 입력 필요"
+            insights.append(f"A03 기준: {_tier_label(tier)} {threshold}km, 제출 {value}")
+        elif code == "A04":
+            threshold = tier_value(tier, 30.0, 35.0, 40.0)
+            value = f"{duration_min}분" if duration_min is not None else "시간 입력 필요"
+            insights.append(f"A04 기준: {_tier_label(tier)} {threshold}분, 제출 {value}")
+        elif code == "A05":
+            threshold = tier_value(tier, 45.0, 50.0, 55.0)
+            value = f"{duration_min}분" if duration_min is not None else "시간 입력 필요"
+            insights.append(f"A05 기준: {_tier_label(tier)} {threshold}분, 제출 {value}")
+        elif code == "B01":
+            start_time = item.get("start_time") or "시간 입력 필요"
+            insights.append(f"B01 시작 시간: {start_time}")
+        elif code == "B02":
+            start_time = item.get("start_time") or "시간 입력 필요"
+            insights.append(f"B02 시작 시간: {start_time}")
+        elif code == "B05":
+            if run_date:
+                weekday = "월화수목금토일"[run_date.weekday()]
+                insights.append(f"B05 날짜: {run_date.isoformat()} ({weekday})")
+            else:
+                insights.append("B05 날짜 입력 필요")
+        elif code == "C04":
+            if run_date:
+                names = by_date.get(run_date, [])
+                names_text = ", ".join(names) if names else "-"
+                insights.append(f"C04 당일 인증 {len(names)}명: {names_text}")
+            else:
+                insights.append("C04 날짜 입력 필요")
+        elif code == "D02":
+            if run_date:
+                start, end = _week_bounds(run_date)
+                dates = [d for d in by_player.get(name, []) if start <= d <= end]
+                dates_text = ", ".join(d.isoformat() for d in dates) if dates else "-"
+                insights.append(
+                    f"D02 주간({start.isoformat()}~{end.isoformat()}): {len(dates)}회 ({dates_text})"
+                )
+            else:
+                insights.append("D02 날짜 입력 필요")
+
+    if not insights:
+        return "-"
+    items_html = "".join(f"<li>{html.escape(text)}</li>" for text in insights)
+    return f"<ul class=\"insights\">{items_html}</ul>"
+
+
+def _render_admin_page(
+    *,
+    items: list[dict],
+    status: str,
+    key: str,
+    message: str,
+    boards_meta: str,
+    card_titles: dict[str, str],
+) -> str:
+    by_date, by_player = _build_submission_indexes(items)
+    submitters = _unique_preserve([item.get("player_name") for item in items if item.get("player_name")])
+    if submitters:
+        submitters_html = f"{len(submitters)}명 · " + ", ".join(html.escape(name) for name in submitters)
+    else:
+        submitters_html = "-"
+    rows = []
+    for item in items:
+        created = _format_created_at(item.get("created_at"))
+        name = item.get("player_name") or "-"
+        tier = _tier_label(item.get("tier"))
+        run_date = _format_run_date(item.get("run_date"))
+        summary = _validation_summary(item.get("validation") or {})
+        review_notes = item.get("review_notes") or ""
+        cards_html = _format_card_list(
+            item.get("validation") or {},
+            card_titles,
+            fallback_codes=item.get("resolved_codes") or [],
+        )
+        files = item.get("files") or []
+        file_count = len(files)
+        if file_count:
+            file_link = f"/admin/submissions/{item['id']}?key={key}"
+            files_html = f"<a class=\"btn-link\" href=\"{file_link}\">사진 보기 ({file_count})</a>"
+        else:
+            files_html = "-"
+        insights_html = _build_insights(item, by_date=by_date, by_player=by_player)
+        row = f"""
+          <tr>
+            <td>{created}</td>
+            <td>{name}</td>
+            <td>{tier}</td>
+            <td>{run_date}</td>
+            <td>{cards_html}</td>
+            <td>{summary}</td>
+            <td>{insights_html}</td>
+            <td>{files_html}</td>
+            <td>
+              <form method="post" action="/admin/review/{item['id']}?status={status}&key={key}">
+                <input type="hidden" name="admin_key" value="{key}" />
+                <input type="text" name="reviewer" placeholder="검토자" />
+                <input type="text" name="review_notes" value="{review_notes}" placeholder="메모" />
+                <button type="submit" name="review_status" value="approved">승인</button>
+                <button type="submit" name="review_status" value="rejected">반려</button>
+              </form>
+            </td>
+          </tr>
+        """
+        rows.append(row)
+
+    status_label = _status_label(status)
+    table_rows = "\n".join(rows) if rows else "<tr><td colspan='9'>제출 내역 없음</td></tr>"
+    return f"""
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운영진</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 24px; color: #111827; }}
+    table {{ border-collapse: collapse; width: 100%; }}
+    th, td {{ border: 1px solid #ddd; padding: 8px; font-size: 12px; vertical-align: top; }}
+    th {{ background: #f4f4f4; text-align: left; }}
+    .meta {{ display: grid; gap: 6px; margin-top: 6px; color: #374151; }}
+    .message {{ color: #0a6; }}
+    .hint {{ margin: 6px 0 0; font-size: 12px; color: #6b7280; }}
+    .card-list {{ margin: 0; padding-left: 16px; }}
+    .card-list li {{ margin-bottom: 4px; }}
+    .card-code {{ font-weight: 700; }}
+    .card-title {{ color: #374151; }}
+    .card-status {{ font-size: 11px; padding: 1px 6px; border-radius: 999px; background: #eef2ff; margin-left: 4px; }}
+    .card-status--failed {{ background: #fee2e2; }}
+    .card-status--needs_review {{ background: #fef3c7; }}
+    .card-status--passed {{ background: #dcfce7; }}
+    .btn-link {{ display: inline-block; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 8px; text-decoration: none; color: #111827; background: #ffffff; }}
+    .insights {{ margin: 0; padding-left: 16px; color: #374151; }}
+    .insights li {{ margin-bottom: 4px; }}
+    .nav-bar {{ display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0; }}
+    .section-title {{ margin: 0; }}
+    .page-header {{ display: flex; gap: 18px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }}
+    .header-actions {{ min-width: 260px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #f9fafb; }}
+    .header-actions form {{ display: grid; gap: 8px; }}
+    .section-row {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; flex-wrap: wrap; }}
+    .action-form button {{ padding: 8px 12px; border-radius: 8px; border: 1px solid #111827; background: #111827; color: #ffffff; }}
+  </style>
+</head>
+<body>
+  <header class="page-header" id="boards">
+    <div>
+      <h1>운영진 관리</h1>
+      <div class="meta">
+        <div>빙고판: {boards_meta}</div>
+        <div>제출자(현재 목록): {submitters_html}</div>
+        <div class="message">{message}</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <h2 class="section-title">빙고판 업로드</h2>
+      <p class="hint">설문 응답(.xlsx)을 업로드하면 보드가 갱신됩니다.</p>
+      <form method="post" action="/admin/boards/upload?key={key}" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".xlsx" required />
+        <button type="submit">업로드</button>
+      </form>
+    </div>
+  </header>
+
+  <nav class="nav-bar">
+    <a class="btn-link" href="/admin?status=pending&key={key}#submissions">대기</a>
+    <a class="btn-link" href="/admin?status=approved&key={key}#submissions">승인</a>
+    <a class="btn-link" href="/admin?status=rejected&key={key}#submissions">반려</a>
+    <a class="btn-link" href="/admin?status=all&key={key}#submissions">전체</a>
+  </nav>
+
+  <section id="submissions">
+    <div class="section-row">
+      <div>
+        <h2 class="section-title">제출 목록 ({status_label})</h2>
+        <p class="hint">자동 판정 결과와 검토 메모를 확인하세요.</p>
+      </div>
+      <form method="post" action="/admin/publish?status={status}&key={key}" class="action-form">
+        <button type="submit">업데이트 반영</button>
+      </form>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>제출 시간</th>
+          <th>이름</th>
+          <th>티어</th>
+          <th>러닝 날짜</th>
+          <th>카드(라벨)</th>
+          <th>자동 판정</th>
+          <th>규칙 요약</th>
+          <th>첨부</th>
+          <th>리뷰</th>
+        </tr>
+      </thead>
+      <tbody>
+        {table_rows}
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>
+"""
+
+
+def _render_admin_submission_page(
+    *,
+    submission_id: str,
+    meta: dict[str, Any],
+    key: str,
+    card_titles: dict[str, str],
+) -> str:
+    name = meta.get("player_name") or "-"
+    created = _format_created_at(meta.get("created_at"))
+    tier = _tier_label(meta.get("tier"))
+    run = meta.get("run") or {}
+    run_date = _format_run_date(run.get("run_date"))
+    start_time = run.get("start_time") or "-"
+    distance = run.get("distance_km")
+    duration = run.get("duration_min")
+    distance_text = f"{distance}km" if distance is not None else "-"
+    duration_text = f"{duration}분" if duration is not None else "-"
+    cards_html = _format_card_list(
+        meta.get("validation") or [],
+        card_titles,
+        fallback_codes=meta.get("resolved_codes") or [],
+    )
+    files = meta.get("files") or []
+    file_items = []
+    for idx, info in enumerate(files):
+        filename = info.get("filename") or info.get("stored_as") or f"file-{idx + 1}"
+        file_url = f"/admin/submissions/{submission_id}/files/{idx}?key={key}"
+        escaped = html.escape(filename)
+        if Path(filename).suffix.lower() in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"):
+            file_items.append(
+                f"""
+                <figure class="file-item">
+                  <a href="{file_url}" target="_blank" rel="noopener">이미지 열기</a>
+                  <img src="{file_url}" alt="{escaped}" loading="lazy" />
+                  <figcaption>{escaped}</figcaption>
+                </figure>
+                """
+            )
+        else:
+            file_items.append(
+                f"<div class=\"file-item\"><a href=\"{file_url}\" target=\"_blank\" rel=\"noopener\">{escaped}</a></div>"
+            )
+
+    files_html = "".join(file_items) if file_items else "<p>첨부 파일 없음</p>"
+    return f"""
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운영진 · {html.escape(submission_id)}</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 24px; color: #111827; }}
+    a {{ color: inherit; }}
+    .meta {{ margin-bottom: 16px; }}
+    .chips {{ display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }}
+    .chip {{ padding: 4px 8px; border-radius: 999px; background: #f3f4f6; font-size: 12px; }}
+    .card-list {{ margin: 0; padding-left: 16px; }}
+    .card-list li {{ margin-bottom: 4px; }}
+    .card-code {{ font-weight: 700; }}
+    .card-title {{ color: #374151; }}
+    .card-status {{ font-size: 11px; padding: 1px 6px; border-radius: 999px; background: #eef2ff; margin-left: 4px; }}
+    .card-status--failed {{ background: #fee2e2; }}
+    .card-status--needs_review {{ background: #fef3c7; }}
+    .card-status--passed {{ background: #dcfce7; }}
+    .files {{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}
+    .file-item {{ border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; background: #f9fafb; }}
+    .file-item img {{ width: 100%; border-radius: 8px; margin-top: 6px; }}
+    .nav-bar {{ display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }}
+    .btn-link {{ display: inline-block; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px; text-decoration: none; color: #111827; background: #ffffff; }}
+  </style>
+</head>
+<body>
+  <div class="nav-bar">
+    <a class="btn-link" href="/admin?status=pending&key={key}#submissions">대기</a>
+    <a class="btn-link" href="/admin?status=approved&key={key}#submissions">승인</a>
+    <a class="btn-link" href="/admin?status=rejected&key={key}#submissions">반려</a>
+    <a class="btn-link" href="/admin?status=all&key={key}#submissions">전체</a>
+    <a class="btn-link" href="/admin?status=pending&key={key}#boards">빙고판 업로드</a>
+  </div>
+  <h1>제출 상세</h1>
+  <div class="meta">
+    <div><strong>이름</strong>: {html.escape(str(name))}</div>
+    <div><strong>제출 시간</strong>: {html.escape(str(created))}</div>
+  </div>
+  <div class="chips">
+    <span class="chip">티어: {html.escape(str(tier))}</span>
+    <span class="chip">러닝 날짜: {html.escape(str(run_date))}</span>
+    <span class="chip">시작 시간: {html.escape(str(start_time))}</span>
+    <span class="chip">거리: {html.escape(str(distance_text))}</span>
+    <span class="chip">시간: {html.escape(str(duration_text))}</span>
+  </div>
+  <h2>카드</h2>
+  {cards_html}
+  <h2>제출 이미지</h2>
+  <div class="files">
+    {files_html}
+  </div>
+</body>
+</html>
+"""
+
+
+def _render_admin_login(path: str, message: str | None = None) -> str:
+    message_html = f"<p class=\"message\">{html.escape(message)}</p>" if message else ""
+    return f"""
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운영진 로그인</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; margin: 24px; color: #111827; }}
+    form {{ display: flex; gap: 8px; align-items: center; }}
+    input {{ padding: 8px 10px; border-radius: 8px; border: 1px solid #d1d5db; }}
+    button {{ padding: 8px 12px; border-radius: 8px; border: 1px solid #111827; background: #111827; color: #fff; }}
+    .message {{ color: #b91c1c; margin-top: 12px; }}
+  </style>
+</head>
+<body>
+  <h1>운영진 인증</h1>
+  <p>운영진 키를 입력하세요.</p>
+  <form method="get" action="{html.escape(path)}">
+    <input type="password" name="key" placeholder="운영진 키" required />
+    <button type="submit">입장</button>
+  </form>
+  {message_html}
+</body>
+</html>
+"""
+
+
 def create_app() -> FastAPI:
     base_dir = Path(__file__).resolve().parents[1]
     load_dotenv(base_dir / ".env")
@@ -120,6 +723,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="MRC Binggo Submit API", version="0.1.0")
     app.state.settings = settings
     app.state.storage = storage
+    app.state.base_dir = base_dir
 
     app.add_middleware(
         CORSMiddleware,
@@ -134,10 +738,11 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/api/v1/cards")
-    def cards(seed: str = DEFAULT_SEED) -> dict[str, Any]:
-        label_map = build_label_map(seed)
+    def cards(seed: str | None = None) -> dict[str, Any]:
+        resolved_seed = (seed or os.getenv("MRC_SEED", DEFAULT_SEED)).strip() or DEFAULT_SEED
+        label_map = build_label_map(resolved_seed)
         return {
-            "seed": seed,
+            "seed": resolved_seed,
             "cards": [
                 {
                     "code": c.code,
@@ -151,6 +756,36 @@ def create_app() -> FastAPI:
             "by_type": CARDS_BY_TYPE,
             "label_map": label_map.by_id,
         }
+
+    @app.get("/api/v1/progress")
+    def progress() -> JSONResponse:
+        path = settings.storage_dir / "publish" / "progress.json"
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="progress not found")
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="progress invalid")
+        return JSONResponse(content=data)
+
+    @app.get("/api/v1/boards")
+    def boards() -> JSONResponse:
+        env_path = os.getenv("MRC_BOARDS_PATH")
+        path = Path(env_path) if env_path else settings.storage_dir / "boards" / "boards.json"
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="boards not found")
+        seed = os.getenv("MRC_SEED", DEFAULT_SEED)
+        map_labels = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
+        carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
+        data = load_boards_json(
+            path,
+            carddeck_path=carddeck_path,
+            label_seed=seed,
+            apply_label_map=map_labels,
+        )
+        if not data:
+            raise HTTPException(status_code=500, detail="boards invalid")
+        return JSONResponse(content=data)
 
     @app.post("/api/v1/submissions")
     async def submit(request: Request, files: list[UploadFile] = File(...)) -> dict[str, Any]:
@@ -174,19 +809,57 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="티어(tier)가 올바르지 않습니다. beginner/intermediate/advanced")
 
         seed = str(form.get("seed") or DEFAULT_SEED).strip() or DEFAULT_SEED
+        map_labels = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
+        carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
 
         claimed_raw = [str(v) for v in form.getlist("claimed_labels")]
-        claimed_labels = _split_csvish(claimed_raw)
+        claimed_labels = normalize_claim_labels(_split_csvish(claimed_raw))
         rules_ok, rule_msgs = validate_claim_labels(claimed_labels)
         if not rules_ok:
             raise HTTPException(status_code=400, detail={"messages": rule_msgs})
 
+        board_codes_map = _load_board_codes(
+            settings.storage_dir,
+            carddeck_path=carddeck_path,
+            seed=seed,
+            map_labels=map_labels,
+        )
+        player_board_codes = board_codes_map.get(player_name)
+
         label_map = build_label_map(seed)
         resolved_codes: list[str] = []
-        for label in [l.strip().upper() for l in claimed_labels]:
+        invalid_labels: list[str] = []
+        missing_on_board: list[str] = []
+
+        for label in claimed_labels:
+            if player_board_codes is not None:
+                if label not in CARDS:
+                    invalid_labels.append(label)
+                    continue
+                if label not in player_board_codes:
+                    missing_on_board.append(label)
+                    continue
+                resolved_codes.append(label)
+                continue
+
+            if label in CARDS:
+                resolved_codes.append(label)
+                continue
             if label not in label_map.by_label:
-                raise HTTPException(status_code=400, detail=f"알 수 없는 카드 라벨: {label}")
+                invalid_labels.append(label)
+                continue
             resolved_codes.append(label_map.by_label[label])
+
+        if invalid_labels:
+            raise HTTPException(
+                status_code=400,
+                detail={"messages": [f"존재하지 않는 카드 코드: {', '.join(invalid_labels)}"]},
+            )
+        if missing_on_board:
+            raise HTTPException(
+                status_code=400,
+                detail={"messages": [f"빙고판에 없는 카드 코드: {', '.join(missing_on_board)}"]},
+            )
 
         group_tiers_raw = _split_csvish([str(v) for v in form.getlist("group_tiers")])
         group_tiers = tuple(normalize_tier(t.strip()) for t in group_tiers_raw if t.strip()) or None
@@ -241,6 +914,12 @@ def create_app() -> FastAPI:
                 }
             )
 
+        summary = {
+            "passed": sum(1 for v in validations if v["status"] == "passed"),
+            "failed": sum(1 for v in validations if v["status"] == "failed"),
+            "needs_review": sum(1 for v in validations if v["status"] == "needs_review"),
+        }
+
         submission_id = new_submission_id()
         submission_dir = storage.create_submission_dir(submission_id)
 
@@ -263,6 +942,16 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="seal_type 값이 올바르지 않습니다.")
         log_summary = str(form.get("log_summary") or "").strip() or None
 
+        review_status = "pending"
+        reviewed_at = None
+        reviewed_by = None
+        review_notes = None
+        if summary["needs_review"] == 0 and summary["failed"] > 0:
+            review_status = "rejected"
+            reviewed_at = created_at
+            reviewed_by = "auto"
+            review_notes = "자동 반려: 자동 판정 실패"
+
         meta = {
             "id": submission_id,
             "created_at": created_at,
@@ -279,7 +968,7 @@ def create_app() -> FastAPI:
                 "wind_m_s": payload.wind_m_s,
                 "precipitation": payload.precipitation,
             },
-            "claimed_labels": [l.strip().upper() for l in claimed_labels],
+            "claimed_labels": claimed_labels,
             "resolved_codes": resolved_codes,
             "validation": validations,
             "notes": notes,
@@ -289,6 +978,12 @@ def create_app() -> FastAPI:
                 "seal_target": seal_target,
                 "seal_type": seal_type,
                 "log_summary": log_summary,
+            },
+            "review": {
+                "status": review_status,
+                "reviewed_at": reviewed_at,
+                "reviewed_by": reviewed_by,
+                "review_notes": review_notes,
             },
             "files": [f.__dict__ for f in stored_files],
             "client": {
@@ -307,7 +1002,7 @@ def create_app() -> FastAPI:
             start_time=payload.start_time.isoformat(timespec="minutes") if payload.start_time else None,
             distance_km=payload.distance_km,
             duration_min=payload.duration_min,
-            claimed_labels=[l.strip().upper() for l in claimed_labels],
+            claimed_labels=claimed_labels,
             resolved_codes=resolved_codes,
             validation={"cards": validations},
             notes=notes,
@@ -316,16 +1011,14 @@ def create_app() -> FastAPI:
             seal_target=seal_target,
             seal_type=seal_type,
             log_summary=log_summary,
+            review_status=review_status,
+            reviewed_at=reviewed_at,
+            reviewed_by=reviewed_by,
+            review_notes=review_notes,
             files=stored_files,
             user_agent=request.headers.get("user-agent"),
             client_ip=_client_ip(request),
         )
-
-        summary = {
-            "passed": sum(1 for v in validations if v["status"] == "passed"),
-            "failed": sum(1 for v in validations if v["status"] == "failed"),
-            "needs_review": sum(1 for v in validations if v["status"] == "needs_review"),
-        }
 
         return {
             "id": submission_id,
@@ -340,5 +1033,140 @@ def create_app() -> FastAPI:
             "summary": summary,
             "stored_files": [f.__dict__ for f in stored_files],
         }
+
+    @app.get("/admin")
+    def admin(request: Request, status: str = "pending") -> HTMLResponse:
+        key = _admin_key_from(request)
+        if settings.admin_key and key != settings.admin_key:
+            message = "운영진 키가 필요합니다." if not key else "운영진 키가 올바르지 않습니다."
+            action = f"{request.url.path}?status={status}"
+            return HTMLResponse(_render_admin_login(action, message), status_code=401)
+        status_value = (status or "pending").lower()
+        if status_value == "all":
+            items = storage.list_submissions(status=None, limit=2000)
+        else:
+            items = storage.list_submissions(status=status_value, limit=200)
+        carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
+        card_titles = _load_card_titles(carddeck_path)
+        boards_path = settings.storage_dir / "boards" / "boards.json"
+        boards_meta = "none"
+        if boards_path.exists():
+            try:
+                meta = json.loads(boards_path.read_text(encoding="utf-8"))
+                boards_meta = _format_boards_meta(meta, boards_path.name)
+            except json.JSONDecodeError:
+                boards_meta = _format_boards_meta(None, boards_path.name)
+        message = request.query_params.get("msg") or ""
+        return HTMLResponse(
+            _render_admin_page(
+                items=items,
+                status=status,
+                key=key,
+                message=message,
+                boards_meta=boards_meta,
+                card_titles=card_titles,
+            )
+        )
+
+    @app.get("/admin/submissions/{submission_id}")
+    def admin_submission(submission_id: str, request: Request) -> HTMLResponse:
+        key = _admin_key_from(request)
+        if settings.admin_key and key != settings.admin_key:
+            message = "운영진 키가 필요합니다." if not key else "운영진 키가 올바르지 않습니다."
+            return HTMLResponse(_render_admin_login(request.url.path, message), status_code=401)
+        meta = _load_submission_meta(storage, submission_id)
+        if not meta:
+            raise HTTPException(status_code=404, detail="submission not found")
+        carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
+        card_titles = _load_card_titles(carddeck_path)
+        return HTMLResponse(
+            _render_admin_submission_page(
+                submission_id=submission_id,
+                meta=meta,
+                key=key,
+                card_titles=card_titles,
+            )
+        )
+
+    @app.get("/admin/submissions/{submission_id}/files/{file_index}")
+    def admin_submission_file(submission_id: str, file_index: int, request: Request) -> FileResponse:
+        _require_admin(settings, request)
+        meta = _load_submission_meta(storage, submission_id)
+        if not meta:
+            raise HTTPException(status_code=404, detail="submission not found")
+        files = meta.get("files") or []
+        if file_index < 0 or file_index >= len(files):
+            raise HTTPException(status_code=404, detail="file not found")
+        stored_as = files[file_index].get("stored_as")
+        if not stored_as:
+            raise HTTPException(status_code=404, detail="file not found")
+        submission_dir = storage.submissions_dir / submission_id
+        file_path = (submission_dir / stored_as).resolve()
+        try:
+            file_path.relative_to(submission_dir.resolve())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid file path")
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="file not found")
+        media_type, _ = mimetypes.guess_type(str(file_path))
+        return FileResponse(file_path, media_type=media_type or "application/octet-stream")
+
+    @app.post("/admin/review/{submission_id}")
+    async def admin_review(submission_id: str, request: Request) -> RedirectResponse:
+        form = await request.form()
+        key = _require_admin(settings, request, dict(form))
+        status = (form.get("review_status") or "").strip().lower()
+        if status not in ("approved", "rejected", "pending"):
+            raise HTTPException(status_code=400, detail="review_status invalid")
+        reviewer = str(form.get("reviewer") or "").strip() or None
+        notes = str(form.get("review_notes") or "").strip() or None
+        storage.update_review_status(
+            submission_id=submission_id,
+            status=status,
+            reviewed_at=utc_now_iso(),
+            reviewed_by=reviewer,
+            review_notes=notes,
+        )
+        message = "리뷰 업데이트 완료"
+        if _parse_bool(os.getenv("MRC_ADMIN_AUTO_PUBLISH")):
+            _, publish_message = _run_publish_now(settings.storage_dir)
+            message = f"{message} · {publish_message}"
+        redirect = f"/admin?status={status}&key={key}&msg={message}"
+        return RedirectResponse(url=redirect, status_code=303)
+
+    @app.post("/admin/publish")
+    async def admin_publish(request: Request, status: str = "pending") -> RedirectResponse:
+        form = await request.form()
+        key = _require_admin(settings, request, dict(form))
+        _, message = _run_publish_now(settings.storage_dir)
+        redirect = f"/admin?status={status}&key={key}&msg={message}"
+        return RedirectResponse(url=redirect, status_code=303)
+
+    @app.post("/admin/boards/upload")
+    async def admin_boards_upload(request: Request, file: UploadFile = File(...)) -> RedirectResponse:
+        key = _require_admin(settings, request)
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="file required")
+        data = await file.read()
+        boards_dir = settings.storage_dir / "boards"
+        boards_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = Path(file.filename).name.replace("/", "_").replace("\\", "_")
+        upload_path = boards_dir / f"upload-{safe_name}"
+        upload_path.write_bytes(data)
+
+        carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
+        seed = os.getenv("MRC_SEED", DEFAULT_SEED)
+        use_label_map = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
+        boards_data = generate_boards_from_xlsx(
+            upload_path,
+            carddeck_path,
+            label_seed=seed,
+            use_label_map=use_label_map,
+        )
+        out_path = boards_dir / "boards.json"
+        write_boards_json(boards_data, out_path)
+
+        redirect = f"/admin?status=pending&key={key}&msg=boards+updated"
+        return RedirectResponse(url=redirect, status_code=303)
 
     return app

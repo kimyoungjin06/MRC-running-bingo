@@ -18,6 +18,44 @@ function normalizeBaseUrl(url) {
   return trimmed.replace(/\/+$/, "");
 }
 
+function getAdminBaseOverride() {
+  const meta = document.querySelector('meta[name="mrc-admin-base"]');
+  if (meta && meta.getAttribute("content")) return meta.getAttribute("content");
+  if (window.MRC_ADMIN_BASE) return window.MRC_ADMIN_BASE;
+  if (window.MRC_ADMIN_URL) return window.MRC_ADMIN_URL;
+  return "";
+}
+
+function buildAdminUrl(base) {
+  if (!base) return "";
+  if (base.startsWith("/")) return base;
+  try {
+    return new URL("/admin", base).toString().replace(/\/+$/, "");
+  } catch {
+    return `${normalizeBaseUrl(base)}/admin`;
+  }
+}
+
+function updateAdminLink() {
+  const link = $("adminLink");
+  if (!link) return;
+  const storedBase = localStorage.getItem(STORAGE_KEYS.apiBase) || "";
+  const overrideBase = getAdminBaseOverride();
+  const adminBase = normalizeBaseUrl(overrideBase || storedBase);
+  const adminUrl = buildAdminUrl(adminBase);
+  if (!adminUrl) {
+    link.href = "#";
+    link.classList.add("is-disabled");
+    link.setAttribute("aria-disabled", "true");
+    return;
+  }
+  link.href = adminUrl;
+  link.classList.remove("is-disabled");
+  link.setAttribute("aria-disabled", "false");
+  link.setAttribute("target", "_blank");
+  link.setAttribute("rel", "noopener");
+}
+
 function setMessage(el, message, type) {
   el.textContent = message || "";
   if (!message) {
@@ -30,12 +68,20 @@ function setMessage(el, message, type) {
 function collectClaimLabels() {
   const inputs = Array.from(document.querySelectorAll(".claim-input"));
   return inputs
-    .map((input) => (input.value || "").trim().toUpperCase())
+    .map((input) => normalizeLabel(input.value))
     .filter((v) => v.length > 0);
 }
 
+function normalizeLabel(value) {
+  const raw = (value || "").trim().toUpperCase().replace(/\s+/g, "");
+  if (!raw) return "";
+  const match = raw.match(/^([ABCDW])(\d{1,2})$/);
+  if (!match) return raw;
+  return `${match[1]}${match[2].padStart(2, "0")}`;
+}
+
 function previewRules(labels) {
-  const labelPattern = /^[ABCDW]\\d{2}$/;
+  const labelPattern = /^[ABCDW]\d{2}$/;
   const counts = { A: 0, B: 0, C: 0, D: 0, W: 0, "?": 0 };
   const invalid = new Set();
   labels.forEach((label) => {
@@ -77,6 +123,7 @@ function saveConn() {
   const submitKey = ($("submitKey").value || "").trim();
   localStorage.setItem(STORAGE_KEYS.apiBase, apiBase);
   localStorage.setItem(STORAGE_KEYS.submitKey, submitKey);
+  updateAdminLink();
   return { apiBase, submitKey };
 }
 
@@ -85,6 +132,7 @@ function loadConn() {
   $("submitKey").value = localStorage.getItem(STORAGE_KEYS.submitKey) || "";
   $("playerName").value = localStorage.getItem(STORAGE_KEYS.playerName) || "";
   $("tier").value = localStorage.getItem(STORAGE_KEYS.tier) || "beginner";
+  updateAdminLink();
 }
 
 function savePlayerFields() {
@@ -121,9 +169,10 @@ function renderResult(result) {
     const status = item.status;
     const statusText =
       status === "passed" ? "PASS" : status === "failed" ? "FAIL" : "REVIEW";
-    li.textContent = `${statusText} · ${item.label} → ${item.resolved_code} (${item.type || "?"}, ★${
-      item.stars ?? "?"
-    })${item.reasons?.length ? " · " + item.reasons.join(" / ") : ""}`;
+    const code = item.resolved_code || item.label || "-";
+    li.textContent = `${statusText} · ${code} (${item.type || "?"}, ★${item.stars ?? "?"})${
+      item.reasons?.length ? " · " + item.reasons.join(" / ") : ""
+    }`;
     li.className = status === "passed" ? "status-ok" : status === "failed" ? "status-bad" : "status-warn";
     list.appendChild(li);
   });
@@ -369,6 +418,10 @@ async function handleSubmit(evt) {
   const form = $("submitForm");
   const fd = new FormData(form);
 
+  // normalize labels to A01/B02 format
+  fd.delete("claimed_labels");
+  labels.forEach((label) => fd.append("claimed_labels", label));
+
   // send key as form field (simple request, no extra preflight)
   if (submitKey) fd.append("submit_key", submitKey);
 
@@ -440,6 +493,7 @@ function init() {
   initCustomSelects();
   renderRulePreview();
   $("saveConnBtn").addEventListener("click", handleSaveConn);
+  $("apiBase").addEventListener("input", updateAdminLink);
   $("submitForm").addEventListener("submit", handleSubmit);
   $("playerName").addEventListener("input", savePlayerFields);
   $("tier").addEventListener("change", savePlayerFields);

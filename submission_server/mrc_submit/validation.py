@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, time
+import re
 from typing import Literal
 
 from .cards import CARDS, TIER_ALIASES, CardType, Tier
@@ -236,13 +237,13 @@ def evaluate_card(card_code: str, run: RunPayload) -> tuple[ValidationStatus, li
 
 def validate_claim_labels(labels: list[str]) -> tuple[bool, list[str]]:
     messages: list[str] = []
-    clean = [l.strip().upper() for l in labels if l and l.strip()]
+    clean = normalize_claim_labels(labels)
     if len(clean) == 0:
         return False, ["체크할 카드 코드(라벨)를 1개 이상 입력하세요."]
     if len(set(clean)) != len(clean):
         messages.append("중복 카드가 포함되어 있어요(중복 제거 필요).")
 
-    invalid = [label for label in clean if not (len(label) == 3 and label[0] in "ABCDW" and label[1:].isdigit())]
+    invalid = [label for label in clean if not re.fullmatch(r"[ABCDW]\d{2}", label)]
     if invalid:
         messages.append(f"카드 코드 형식이 올바르지 않아요: {', '.join(invalid)}")
 
@@ -266,3 +267,22 @@ def validate_claim_labels(labels: list[str]) -> tuple[bool, list[str]]:
 
     ok = len(messages) == 0
     return ok, messages
+
+
+def normalize_claim_labels(labels: list[str]) -> list[str]:
+    normalized: list[str] = []
+    for label in labels:
+        value = normalize_label(label)
+        if value:
+            normalized.append(value)
+    return normalized
+
+
+def normalize_label(value: str | None) -> str | None:
+    raw = (value or "").strip().upper().replace(" ", "")
+    if not raw:
+        return None
+    m = re.fullmatch(r"([ABCDW])(\d{1,2})", raw)
+    if not m:
+        return raw
+    return f"{m.group(1)}{m.group(2).zfill(2)}"
