@@ -34,20 +34,20 @@ class CardDef:
 
 CARDS: dict[str, CardDef] = {
     # A. Base (14)
-    "A01": CardDef("A01", "A", 1, "4km+ (tier-scaled)"),
-    "A02": CardDef("A02", "A", 2, "6km+ (tier-scaled)"),
-    "A03": CardDef("A03", "A", 2, "8km+ (tier-scaled)"),
-    "A04": CardDef("A04", "A", 1, "35min+ (tier-scaled)"),
-    "A05": CardDef("A05", "A", 2, "50min+ (tier-scaled)"),
-    "A06": CardDef("A06", "A", 1, "Warm-up 5min"),
+    "A01": CardDef("A01", "A", 1, "7km+ (tier-scaled)"),
+    "A02": CardDef("A02", "A", 2, "8km+ (tier-scaled)"),
+    "A03": CardDef("A03", "A", 2, "10km+ (tier-scaled)"),
+    "A04": CardDef("A04", "A", 1, "40min+ (tier-scaled)"),
+    "A05": CardDef("A05", "A", 2, "60min+ (tier-scaled)"),
+    "A06": CardDef("A06", "A", 1, "Warm-up 10min"),
     "A07": CardDef("A07", "A", 1, "Cool-down stretch 10min"),
-    "A08": CardDef("A08", "A", 1, "Foam roll / massage 5min"),
+    "A08": CardDef("A08", "A", 1, "Foam roll / massage 20min"),
     "A09": CardDef("A09", "A", 2, "Strength 10min"),
-    "A10": CardDef("A10", "A", 1, "Silent run (tier-scaled)"),
+    "A10": CardDef("A10", "A", 2, "5km with first-time runner"),
     "A11": CardDef("A11", "A", 2, "New route (tier-scaled)"),
     "A12": CardDef("A12", "A", 2, "Build-up (tier-scaled)"),
-    "A13": CardDef("A13", "A", 2, "Running drills 5min"),
-    "A14": CardDef("A14", "A", 1, "Run log + 1 line"),
+    "A13": CardDef("A13", "A", 2, "Running drills 5min (with base run)"),
+    "A14": CardDef("A14", "A", 1, "Instagram share"),
     # B. Condition (10)
     "B01": CardDef("B01", "B", 1, "Night (>=22:00)"),
     "B02": CardDef("B02", "B", 2, "Dawn (<06:00)"),
@@ -69,15 +69,17 @@ CARDS: dict[str, CardDef] = {
     "C07": CardDef("C07", "C", 2, "Mixed-tier run"),
     "C08": CardDef("C08", "C", 1, "Easy chat run 60min+"),
     "C09": CardDef("C09", "C", 1, "After-run coffee/stretch"),
-    # D. Marathon (3)
+    # D. Marathon (5)
     "D01": CardDef("D01", "D", 3, "5-day streak"),
-    "D02": CardDef("D02", "D", 3, "6 runs in a week"),
+    "D02": CardDef("D02", "D", 3, "Final week 6 runs"),
     "D03": CardDef("D03", "D", 3, "Tier distance goal"),
+    "D04": CardDef("D04", "D", 3, "3-day streak"),
+    "D05": CardDef("D05", "D", 3, "Alternating days (run-rest-run-rest)"),
     # W. Wild (4)
     "W01": CardDef("W01", "W", 3, "Thu meeting x3"),
     "W02": CardDef("W02", "W", 3, "Host 2x (>=3 ppl each)"),
     "W03": CardDef("W03", "W", 3, "Pace-maker x3"),
-    "W04": CardDef("W04", "W", 3, "Final week 6 runs"),
+    "W04": CardDef("W04", "W", 3, "6 runs in a week"),
 }
 
 

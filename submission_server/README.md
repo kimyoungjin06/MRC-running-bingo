@@ -1,4 +1,4 @@
-# MRC Binggo 제출/검증 API (로컬 PC용)
+# MRC Bingo 제출/검증 API (로컬 PC용)
 
 GitHub Pages(웹 UI)에서 **스크린샷/메타데이터 업로드**를 받아 로컬 PC에 저장하고, 기본 규칙(A/B/C 1회당 3칸 등)과 일부 카드 조건을 자동 검증하는 작은 API 서버입니다.
 

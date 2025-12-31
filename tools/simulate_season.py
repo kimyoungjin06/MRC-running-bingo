@@ -42,20 +42,20 @@ class CardDef:
 
 CARDS: dict[str, CardDef] = {
     # A. Base
-    "A01": CardDef("A01", "A", 1, "4km+"),
-    "A02": CardDef("A02", "A", 2, "6km+"),
-    "A03": CardDef("A03", "A", 2, "8km+"),
-    "A04": CardDef("A04", "A", 1, "35min+"),
-    "A05": CardDef("A05", "A", 2, "50min+"),
-    "A06": CardDef("A06", "A", 1, "Warm-up 5min"),
+    "A01": CardDef("A01", "A", 1, "7km+"),
+    "A02": CardDef("A02", "A", 2, "8km+"),
+    "A03": CardDef("A03", "A", 2, "10km+"),
+    "A04": CardDef("A04", "A", 1, "40min+"),
+    "A05": CardDef("A05", "A", 2, "60min+"),
+    "A06": CardDef("A06", "A", 1, "Warm-up 10min"),
     "A07": CardDef("A07", "A", 1, "Cool-down stretch 10min"),
-    "A08": CardDef("A08", "A", 1, "Foam roll / massage 5min"),
+    "A08": CardDef("A08", "A", 1, "Foam roll / massage 20min"),
     "A09": CardDef("A09", "A", 2, "Strength 10min"),
-    "A10": CardDef("A10", "A", 1, "Silent run"),
+    "A10": CardDef("A10", "A", 2, "5km with first-time runner"),
     "A11": CardDef("A11", "A", 2, "New route"),
     "A12": CardDef("A12", "A", 2, "Build-up / negative split"),
-    "A13": CardDef("A13", "A", 2, "Running drills 5min"),
-    "A14": CardDef("A14", "A", 1, "Run log + 1 line"),
+    "A13": CardDef("A13", "A", 2, "Running drills 5min (base run)"),
+    "A14": CardDef("A14", "A", 1, "Instagram share"),
     # B. Condition
     "B01": CardDef("B01", "B", 1, "Night (>=22:00)"),
     "B02": CardDef("B02", "B", 2, "Dawn (<06:00)"),
@@ -79,13 +79,15 @@ CARDS: dict[str, CardDef] = {
     "C09": CardDef("C09", "C", 1, "After-run coffee/stretch"),
     # D. Marathon
     "D01": CardDef("D01", "D", 3, "5-day streak"),
-    "D02": CardDef("D02", "D", 3, "6 runs in a week"),
+    "D02": CardDef("D02", "D", 3, "Final week 6 runs"),
     "D03": CardDef("D03", "D", 3, "Tier distance goal"),
+    "D04": CardDef("D04", "D", 3, "3-day streak"),
+    "D05": CardDef("D05", "D", 3, "Alternating days"),
     # W. Wild
     "W01": CardDef("W01", "W", 3, "Thu meeting x3"),
     "W02": CardDef("W02", "W", 3, "Host 2x (>=3 ppl each)"),
     "W03": CardDef("W03", "W", 3, "Pace-maker x3"),
-    "W04": CardDef("W04", "W", 3, "Final week 6 runs"),
+    "W04": CardDef("W04", "W", 3, "6 runs in a week"),
 }
 
 
@@ -137,7 +139,7 @@ class RunEvent:
     elevation_gain_m: int
     hill_repeats: int
     has_light_gear: bool
-    is_silent: bool
+    with_new_runner: bool
     did_warmup: bool
     did_cooldown: bool
     did_foam_roll: bool
@@ -454,16 +456,20 @@ def place_board(
 
 def check_card_satisfied(card_code: str, player: PlayerState, run: RunEvent) -> bool:
     c = card_code
+    base_distance = tier_value(player.tier, 5.0, 7.0, 10.0)
+    base_duration = tier_value(player.tier, 30.0, 40.0, 50.0)
+    if c != "A10" and (run.distance_km < base_distance or run.duration_min < base_duration):
+        return False
     if c == "A01":
-        return run.distance_km >= tier_value(player.tier, 3.0, 4.0, 5.0)
+        return run.distance_km >= tier_value(player.tier, 5.0, 7.0, 10.0)
     if c == "A02":
-        return run.distance_km >= tier_value(player.tier, 5.0, 6.0, 7.0)
+        return run.distance_km >= tier_value(player.tier, 6.0, 8.0, 12.0)
     if c == "A03":
-        return run.distance_km >= tier_value(player.tier, 7.0, 8.0, 9.0)
+        return run.distance_km >= tier_value(player.tier, 7.0, 10.0, 15.0)
     if c == "A04":
-        return run.duration_min >= tier_value(player.tier, 30.0, 35.0, 40.0)
+        return run.duration_min >= tier_value(player.tier, 30.0, 40.0, 50.0)
     if c == "A05":
-        return run.duration_min >= tier_value(player.tier, 45.0, 50.0, 55.0)
+        return run.duration_min >= tier_value(player.tier, 50.0, 60.0, 70.0)
     if c == "A06":
         return run.did_warmup
     if c == "A07":
@@ -473,11 +479,11 @@ def check_card_satisfied(card_code: str, player: PlayerState, run: RunEvent) -> 
     if c == "A09":
         return run.did_strength
     if c == "A10":
-        return run.is_silent and run.duration_min >= tier_value(player.tier, 25.0, 35.0, 45.0)
+        return run.with_new_runner and run.distance_km >= 5.0
     if c == "A11":
-        return run.is_new_route and run.distance_km >= tier_value(player.tier, 4.0, 6.0, 8.0)
+        return run.is_new_route and run.distance_km >= tier_value(player.tier, 5.0, 7.0, 10.0)
     if c == "A12":
-        return run.is_build_up and run.duration_min >= tier_value(player.tier, 25.0, 35.0, 45.0)
+        return run.is_build_up and run.duration_min >= tier_value(player.tier, 30.0, 40.0, 50.0)
     if c == "A13":
         return run.did_drills
     if c == "A14":
@@ -537,6 +543,7 @@ def d_distance_goal_km(tier: Tier) -> float:
 
 def update_player_with_run(player: PlayerState, run: RunEvent, *, season_cfg: SeasonConfig) -> list[str]:
     triggered: list[str] = []
+    prev_day_ran = player.last_day_ran
 
     # per-run counters
     player.total_distance_km += run.distance_km
@@ -555,6 +562,11 @@ def update_player_with_run(player: PlayerState, run: RunEvent, *, season_cfg: Se
 
         if "D01" in player.board["D"] and "D01" not in player.completed and player.consecutive_days >= 5:
             triggered.append("D01")
+        if "D04" in player.board["D"] and "D04" not in player.completed and player.consecutive_days >= 3:
+            triggered.append("D04")
+        if prev_day_ran is not None and run.day_index - prev_day_ran == 2:
+            if "D05" in player.board["D"] and "D05" not in player.completed:
+                triggered.append("D05")
 
     if run.is_thursday_meeting:
         player.thursday_attendance += 1
@@ -585,13 +597,13 @@ def update_player_with_run(player: PlayerState, run: RunEvent, *, season_cfg: Se
             ):
                 triggered.append("W03")
 
-    if "D02" in player.board["D"] and "D02" not in player.completed and player.weekly_run_counts[run.week_index] >= 6:
+    if "D02" in player.board["D"] and "D02" not in player.completed and player.final_week_runs >= season_cfg.final_week_runs_needed:
         triggered.append("D02")
 
     if "D03" in player.board["D"] and "D03" not in player.completed and player.total_distance_km >= d_distance_goal_km(player.tier):
         triggered.append("D03")
 
-    if "W04" in player.board["W"] and "W04" not in player.completed and player.final_week_runs >= season_cfg.final_week_runs_needed:
+    if "W04" in player.board["W"] and "W04" not in player.completed and player.weekly_run_counts[run.week_index] >= 6:
         triggered.append("W04")
 
     return triggered
@@ -795,7 +807,7 @@ def simulate_season(
                 did_log = rng.random() < 0.65
                 is_new_route = rng.random() < 0.16
                 is_build = rng.random() < (0.10 + 0.05 * TIER_ORDER[p.tier])
-                is_silent = rng.random() < 0.10
+                with_new_runner = rng.random() < 0.08
 
                 after_social = is_group and (rng.random() < 0.38)
 
@@ -815,7 +827,7 @@ def simulate_season(
                         elevation_gain_m=elevation_gain,
                         hill_repeats=hill_repeats,
                         has_light_gear=has_light_gear,
-                        is_silent=is_silent,
+                        with_new_runner=with_new_runner,
                         did_warmup=did_warmup,
                         did_cooldown=did_cooldown,
                         did_foam_roll=did_foam,
@@ -1020,7 +1032,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--w01-thu-needed", type=int, default=3, help="W01 달성에 필요한 목요미식회 횟수")
     parser.add_argument("--w02-host-needed", type=int, default=2, help="W02 달성에 필요한 3인+ 벙개 호스트 횟수")
     parser.add_argument("--w03-pace-needed", type=int, default=3, help="W03 달성에 필요한 페이스메이커 횟수")
-    parser.add_argument("--w04-final-week-runs", type=int, default=6, help="W04 달성에 필요한 마지막 7일 러닝 횟수")
+    parser.add_argument(
+        "--d02-final-week-runs",
+        "--w04-final-week-runs",
+        dest="final_week_runs_needed",
+        type=int,
+        default=6,
+        help="D02 달성에 필요한 마지막 7일 러닝 횟수",
+    )
     parser.add_argument("--min-star-beginner", type=int, default=0, help="Optional minimum total ★ sum for beginner boards (0 disables).")
     parser.add_argument("--min-star-intermediate", type=int, default=0, help="Optional minimum total ★ sum for intermediate boards (0 disables).")
     parser.add_argument("--min-star-advanced", type=int, default=0, help="Optional minimum total ★ sum for advanced boards (0 disables).")
@@ -1035,7 +1054,7 @@ def main(argv: list[str] | None = None) -> int:
 
     season_cfg = SeasonConfig(
         weeks=4,
-        final_week_runs_needed=args.w04_final_week_runs,
+        final_week_runs_needed=args.final_week_runs_needed,
         w01_thu_needed=args.w01_thu_needed,
         w02_host_needed=args.w02_host_needed,
         w03_pace_needed=args.w03_pace_needed,

@@ -20,7 +20,7 @@ const PAGES = {
   carddeck: {
     title: "카드 덱",
     file: "carddeck.md",
-    meta: "40장 카드 목록(운영진용/선택 종료 후 공개 권장)",
+    meta: "42장 카드 목록(운영진용/선택 종료 후 공개 권장)",
     githubPath: "CardDeck.md",
   },
   formanagement: {

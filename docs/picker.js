@@ -41,7 +41,7 @@ const CARD_DEFS = [
   { id: "A07", type: "A", stars: 1 },
   { id: "A08", type: "A", stars: 1 },
   { id: "A09", type: "A", stars: 2 },
-  { id: "A10", type: "A", stars: 1 },
+  { id: "A10", type: "A", stars: 2 },
   { id: "A11", type: "A", stars: 2 },
   { id: "A12", type: "A", stars: 2 },
   { id: "A13", type: "A", stars: 2 },
@@ -68,6 +68,8 @@ const CARD_DEFS = [
   { id: "D01", type: "D", stars: 3 },
   { id: "D02", type: "D", stars: 3 },
   { id: "D03", type: "D", stars: 3 },
+  { id: "D04", type: "D", stars: 3 },
+  { id: "D05", type: "D", stars: 3 },
   { id: "W01", type: "W", stars: 3 },
   { id: "W02", type: "W", stars: 3 },
   { id: "W03", type: "W", stars: 3 },
@@ -102,7 +104,6 @@ const state = {
 };
 
 const refs = {
-  seedDisplay: document.getElementById("seedDisplay"),
   tierSelect: document.getElementById("tierSelect"),
   variantToggle: document.getElementById("variantToggle"),
   cardGrid: document.getElementById("cardGrid"),
@@ -925,7 +926,6 @@ function handleCopy() {
 
 function init() {
   initCustomSelects();
-  refs.seedDisplay.textContent = SEASON_SEED;
   state.cards = buildCards(SEASON_SEED);
   state.cardsById = Object.fromEntries(state.cards.map((card) => [card.id, card]));
 

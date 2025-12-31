@@ -19,7 +19,7 @@
       <div class="container topbar__inner">
         <div class="brand">
           <a class="brand__logo-wrap" href="./index.html#quick">
-            <img id="brandLogo" class="brand__logo" src="./assets/logo_yellow.png" alt="MRC Binggo 로고" />
+            <img id="brandLogo" class="brand__logo" src="./assets/logo_yellow.png" alt="MRC Bingo 로고" />
           </a>
           <a class="brand__title" href="./index.html#quick">퍼즐형 빙고 러닝</a>
           <span class="brand__subtitle">인증 템플릿</span>
@@ -127,6 +127,14 @@
                 <div class="template-board__canvas-wrap">
                   <canvas id="boardCanvas" width="1080" height="1080" aria-label="빙고판 미리보기"></canvas>
                 </div>
+                <div class="field field--inline">
+                  <label for="boardShowChecks">인증 칸 표시</label>
+                  <input id="boardShowChecks" type="checkbox" checked />
+                </div>
+                <div class="field field--inline">
+                  <label for="boardShowEffects">특수효과 표시</label>
+                  <input id="boardShowEffects" type="checkbox" checked />
+                </div>
                 <div class="template-actions">
                   <button class="btn" id="boardRefreshBtn" type="button">빙고판 불러오기</button>
                   <button class="btn btn--ghost" id="boardDownloadBtn" type="button">빙고판 PNG 다운로드</button>
@@ -141,7 +149,7 @@
 
     <footer class="footer">
       <div class="container footer__inner">
-        <span>© MRC Binggo 2025W</span>
+        <span>© MRC Bingo 2025W</span>
         <span class="footer__sep">·</span>
         <a class="footer__link" href="./index.html#intro">룰북 보기</a>
       </div>

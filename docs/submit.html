@@ -20,7 +20,7 @@
       <div class="container topbar__inner">
         <div class="brand">
           <a class="brand__logo-wrap" href="./index.html#quick">
-            <img id="brandLogo" class="brand__logo" src="./assets/logo_yellow.png" alt="MRC Binggo 로고" />
+            <img id="brandLogo" class="brand__logo" src="./assets/logo_yellow.png" alt="MRC Bingo 로고" />
           </a>
           <a class="brand__title" href="./index.html#quick">퍼즐형 빙고 러닝</a>
           <span class="brand__subtitle">인증 제출</span>
@@ -126,6 +126,10 @@
               <input id="durationMin" name="duration_min" type="number" inputmode="numeric" step="1" placeholder="예: 42" />
             </div>
 
+            <div class="field">
+              <p class="field__help">공통 조건: 초보 5km+ &amp; 30분+ / 중수 7km+ &amp; 40분+ / 고수 10km+ &amp; 50분+</p>
+            </div>
+
             <details class="card-details">
               <summary>선택 입력(자동 판정 정확도↑)</summary>
               <div class="field">
@@ -171,7 +175,7 @@
                   <br />
                   <label><input type="checkbox" name="has_light_gear" /> 라이트/반사(B10)</label>
                   <br />
-                  <label><input type="checkbox" name="is_silent" /> 무음(A10)</label>
+                  <label><input type="checkbox" name="with_new_runner" /> 첫 러닝 동행(A10)</label>
                   <br />
                   <label><input type="checkbox" name="did_warmup" /> 워밍업(A06)</label>
                   <br />
@@ -181,9 +185,9 @@
                   <br />
                   <label><input type="checkbox" name="did_strength" /> 보강(A09)</label>
                   <br />
-                  <label><input type="checkbox" name="did_drills" /> 드릴(A13)</label>
+                  <label><input type="checkbox" name="did_drills" /> 드릴(A13, 기본 러닝)</label>
                   <br />
-                  <label><input type="checkbox" name="did_log" /> 로그(A14)</label>
+                  <label><input type="checkbox" name="did_log" /> 인스타 공유(A14)</label>
                   <br />
                   <label><input type="checkbox" name="is_new_route" /> 새 코스(A11)</label>
                   <br />
@@ -282,12 +286,21 @@
             <ul class="status-list" id="resultList"></ul>
           </form>
         </section>
+
+        <section class="card">
+          <div class="board-preview__header">
+            <h2 class="card__title">내 빙고판 진행도</h2>
+            <button class="btn btn--ghost" id="loadBoardBtn" type="button">불러오기</button>
+          </div>
+          <p class="section__meta" id="boardStatus">이름 입력 후 불러오기 버튼을 눌러주세요.</p>
+          <div class="board board--public board--preview" id="boardPreview"></div>
+        </section>
       </section>
     </main>
 
     <footer class="footer">
       <div class="container footer__inner">
-        <span>© MRC Binggo 2025W</span>
+        <span>© MRC Bingo 2025W</span>
         <span class="footer__sep">·</span>
         <a class="footer__link" href="./index.html#intro">룰북 보기</a>
       </div>

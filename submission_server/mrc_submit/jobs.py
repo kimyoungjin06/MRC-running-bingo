@@ -205,6 +205,21 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
             continue
         board_index[name] = board
 
+    board_lines_by_name: dict[str, list[list[str]]] = {}
+    board_codes_by_name: dict[str, set[str]] = {}
+    for name, board in board_index.items():
+        grid = [
+            [cell.get("code") if cell else None for cell in row_cells]
+            for row_cells in board.get("grid", [])
+        ]
+        board_lines_by_name[name] = _board_lines(grid)
+        board_codes_by_name[name] = {
+            cell.get("code")
+            for row_cells in board.get("grid", [])
+            for cell in row_cells
+            if cell and cell.get("code")
+        }
+
     players: dict[str, dict[str, Any]] = {}
     attack_logs: list[dict[str, Any]] = []
     latest_logs: list[dict[str, Any]] = []
@@ -237,6 +252,8 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                     "codes": set(),
                     "last_update": None,
                     "token_hold": None,
+                    "bingo5_at": None,
+                    "full_at": None,
                 },
             )
 
@@ -246,11 +263,22 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                 player["last_update"] = created_at
 
             codes = json.loads(row["resolved_codes_json"] or "[]")
-            board = board_index.get(name)
-            if board:
-                board_codes = {cell.get("code") for row_cells in board.get("grid", []) for cell in row_cells if cell}
+            board_codes = board_codes_by_name.get(name)
+            if board_codes:
                 codes = [c for c in codes if c in board_codes]
             player["codes"].update(codes)
+
+            if created_at:
+                board_lines = board_lines_by_name.get(name)
+                if board_lines and player["bingo5_at"] is None:
+                    checked = player["codes"]
+                    bingo_count = sum(1 for line in board_lines if all(code in checked for code in line))
+                    if bingo_count >= 5:
+                        player["bingo5_at"] = created_at
+                if board_codes and player["full_at"] is None:
+                    checked = player["codes"]
+                    if len(checked & board_codes) >= len(board_codes):
+                        player["full_at"] = created_at
 
             if row["token_hold"] is not None:
                 player["token_hold"] = row["token_hold"]
@@ -275,6 +303,13 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
     finally:
         con.close()
 
+    bingo5_times = {name: player.get("bingo5_at") for name, player in players.items() if player.get("bingo5_at")}
+    full_times = {name: player.get("full_at") for name, player in players.items() if player.get("full_at")}
+    first_bingo5_at = min(bingo5_times.values()) if bingo5_times else None
+    first_full_at = min(full_times.values()) if full_times else None
+    first_bingo5_names = {name for name, dt in bingo5_times.items() if dt == first_bingo5_at}
+    first_full_names = {name for name, dt in full_times.items() if dt == first_full_at}
+
     players_out: list[dict[str, Any]] = []
     token_holds: list[dict[str, Any]] = []
 
@@ -292,6 +327,10 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
             checked = set(checked_codes)
             bingo = sum(1 for line in lines if all(code in checked for code in line))
         last_update = player["last_update"].astimezone(tz).isoformat() if player["last_update"] else None
+        bingo5_at = player.get("bingo5_at")
+        full_at = player.get("full_at")
+        bingo5_at_local = bingo5_at.astimezone(tz).isoformat() if bingo5_at else None
+        full_at_local = full_at.astimezone(tz).isoformat() if full_at else None
         players_out.append(
             {
                 "id": board.get("player_id") if board else player["id"],
@@ -302,6 +341,14 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                 "tokens": player["token_hold"] or 0,
                 "last_update": last_update,
                 "checked_codes": checked_codes,
+                "achievements": {
+                    "bingo5": bool(bingo5_at),
+                    "bingo5_at": bingo5_at_local,
+                    "full": bool(full_at),
+                    "full_at": full_at_local,
+                    "first_bingo5": name in first_bingo5_names,
+                    "first_full": name in first_full_names,
+                },
             }
         )
         if player["token_hold"] is not None:

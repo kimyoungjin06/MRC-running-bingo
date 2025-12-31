@@ -30,7 +30,7 @@ SSH 재접속 후 `docker version` 확인하세요.
 
 ```bash
 git clone <your-repo-url>
-cd MRC_Binggo_2025W/submission_server
+cd MRC-running-bingo/submission_server
 
 cp .env.aws.example .env
 # .env 편집: MRC_SUBMIT_ALLOWED_ORIGINS, MRC_SUBMIT_API_KEY, MRC_ADMIN_KEY 등 설정

@@ -34,4 +34,5 @@
   - `tokens`: 현재 토큰 수
   - `last_update`
   - `checked_codes[]`: 체크된 카드 코드 리스트
+  - `achievements`: 5빙고/올빙고 등 달성 정보
   - `example`: 예시 데이터 여부

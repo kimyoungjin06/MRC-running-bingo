@@ -1,53 +1,342 @@
 {
   "version": 1,
   "seed": "2025W",
-  "generated_at": "2025-12-20T18:30:00+09:00",
+  "generated_at": "2025-12-29T13:10:00+09:00",
   "summary": {
-    "total_players": 1,
-    "total_checked": 7,
-    "total_stars": 13
+    "total_players": 7,
+    "total_checked": 102,
+    "total_stars": 171
   },
   "attack_logs": [
     {
-      "time": "2025-12-20T18:20:00+09:00",
-      "actor": "김영진",
+      "time": "2025-12-29T09:12:00+09:00",
+      "actor": "박수현",
       "target": "홍길동",
       "seal_type": "B"
+    },
+    {
+      "time": "2025-12-29T09:45:00+09:00",
+      "actor": "정민수",
+      "target": "이다혜",
+      "seal_type": "C"
+    },
+    {
+      "time": "2025-12-29T10:02:00+09:00",
+      "actor": "김영진",
+      "target": "박수현",
+      "seal_type": "B"
+    },
+    {
+      "time": "2025-12-29T10:35:00+09:00",
+      "actor": "이다혜",
+      "target": "김영진",
+      "seal_type": "C"
     }
   ],
   "token_holds": [
     {
       "name": "김영진",
       "hold": 1,
+      "event": "status"
+    },
+    {
+      "name": "박수현",
+      "hold": 1,
+      "event": "status"
+    },
+    {
+      "name": "정민수",
+      "hold": 1,
+      "event": "earned"
+    },
+    {
+      "name": "임지훈",
+      "hold": 1,
       "event": "earned"
     }
   ],
   "latest_logs": [
     {
-      "time": "2025-12-20T18:25:00+09:00",
+      "time": "2025-12-29T12:40:00+09:00",
       "player": "김영진",
+      "message": "올빙고 달성 → 퍼스트 올빙고"
+    },
+    {
+      "time": "2025-12-29T10:35:00+09:00",
+      "player": "이다혜",
+      "message": "C씰 사용 → 김영진"
+    },
+    {
+      "time": "2025-12-29T10:02:00+09:00",
+      "player": "김영진",
+      "message": "B씰 사용 → 박수현"
+    },
+    {
+      "time": "2025-12-29T09:45:00+09:00",
+      "player": "정민수",
+      "message": "C씰 사용 → 이다혜"
+    },
+    {
+      "time": "2025-12-29T09:20:00+09:00",
+      "player": "홍길동",
+      "message": "실드 사용 → B씰 방어"
+    },
+    {
+      "time": "2025-12-29T09:12:00+09:00",
+      "player": "박수현",
+      "message": "B씰 사용 → 홍길동"
+    },
+    {
+      "time": "2025-12-29T08:50:00+09:00",
+      "player": "정민수",
+      "message": "W01 완료 → 토큰 획득"
+    },
+    {
+      "time": "2025-12-29T07:15:00+09:00",
+      "player": "임지훈",
       "message": "W04 완료 → 토큰 획득"
+    },
+    {
+      "time": "2025-12-23T20:40:00+09:00",
+      "player": "박수현",
+      "message": "5빙고 달성 → 퍼스트 5빙고"
     }
   ],
   "players": [
     {
       "id": "player-14631f01bf",
       "name": "김영진",
-      "checked": 7,
-      "bingo": 0,
-      "stars": 13,
+      "checked": 25,
+      "bingo": 12,
+      "stars": 41,
       "tokens": 1,
-      "last_update": "2025-12-20T18:30:00+09:00",
+      "last_update": "2025-12-29T12:40:00+09:00",
       "checked_codes": [
-        "C03",
+        "A05",
+        "A02",
+        "B06",
+        "A09",
+        "A07",
+        "A04",
+        "A13",
+        "B02",
         "A03",
-        "D02",
-        "A11",
-        "B09",
+        "B07",
+        "B04",
+        "B03",
+        "A06",
+        "A08",
+        "A12",
         "W04",
-        "B01"
+        "B01",
+        "B05",
+        "B08",
+        "A11",
+        "C02",
+        "C01",
+        "A14",
+        "A01",
+        "A10"
       ],
-      "example": true
+      "achievements": {
+        "bingo5": true,
+        "bingo5_at": "2025-12-24T09:10:00+09:00",
+        "full": true,
+        "full_at": "2025-12-29T12:40:00+09:00",
+        "first_bingo5": true,
+        "first_full": true
+      }
+    },
+    {
+      "id": "player-8c1f2e4a90",
+      "name": "박수현",
+      "checked": 19,
+      "bingo": 5,
+      "stars": 31,
+      "tokens": 1,
+      "last_update": "2025-12-29T09:20:00+09:00",
+      "checked_codes": [
+        "A01",
+        "A02",
+        "A04",
+        "A06",
+        "A07",
+        "A11",
+        "A12",
+        "B01",
+        "B04",
+        "B05",
+        "B07",
+        "B10",
+        "C01",
+        "C03",
+        "C05",
+        "C06",
+        "D01",
+        "W01",
+        "W03"
+      ],
+      "achievements": {
+        "bingo5": true,
+        "bingo5_at": "2025-12-23T20:40:00+09:00",
+        "full": false,
+        "full_at": null,
+        "first_bingo5": true,
+        "first_full": false
+      }
+    },
+    {
+      "id": "player-59c8a4c8c2",
+      "name": "이다혜",
+      "checked": 16,
+      "bingo": 4,
+      "stars": 29,
+      "tokens": 0,
+      "last_update": "2025-12-29T10:05:00+09:00",
+      "checked_codes": [
+        "A03",
+        "A05",
+        "A06",
+        "A08",
+        "A09",
+        "A10",
+        "A11",
+        "B02",
+        "B05",
+        "B06",
+        "B09",
+        "C02",
+        "C04",
+        "C08",
+        "D04",
+        "W02"
+      ],
+      "achievements": {
+        "bingo5": false,
+        "bingo5_at": null,
+        "full": false,
+        "full_at": null,
+        "first_bingo5": false,
+        "first_full": false
+      }
+    },
+    {
+      "id": "player-7b28e51d0f",
+      "name": "정민수",
+      "checked": 14,
+      "bingo": 3,
+      "stars": 23,
+      "tokens": 1,
+      "last_update": "2025-12-29T08:50:00+09:00",
+      "checked_codes": [
+        "A01",
+        "A02",
+        "A04",
+        "A07",
+        "A13",
+        "B03",
+        "B04",
+        "B05",
+        "B08",
+        "C01",
+        "C07",
+        "C09",
+        "D02",
+        "W01"
+      ],
+      "achievements": {
+        "bingo5": false,
+        "bingo5_at": null,
+        "full": false,
+        "full_at": null,
+        "first_bingo5": false,
+        "first_full": false
+      }
+    },
+    {
+      "id": "player-2f1a8c9d1a",
+      "name": "홍길동",
+      "checked": 10,
+      "bingo": 1,
+      "stars": 14,
+      "tokens": 0,
+      "last_update": "2025-12-28T21:30:00+09:00",
+      "checked_codes": [
+        "A01",
+        "A04",
+        "A06",
+        "B01",
+        "B05",
+        "B09",
+        "C01",
+        "C03",
+        "D05",
+        "W03"
+      ],
+      "achievements": {
+        "bingo5": false,
+        "bingo5_at": null,
+        "full": false,
+        "full_at": null,
+        "first_bingo5": false,
+        "first_full": false
+      }
+    },
+    {
+      "id": "player-3d9f7a2b6c",
+      "name": "임지훈",
+      "checked": 8,
+      "bingo": 0,
+      "stars": 15,
+      "tokens": 1,
+      "last_update": "2025-12-29T07:15:00+09:00",
+      "checked_codes": [
+        "A02",
+        "A03",
+        "A08",
+        "B02",
+        "B07",
+        "C05",
+        "C06",
+        "W04"
+      ],
+      "achievements": {
+        "bingo5": false,
+        "bingo5_at": null,
+        "full": false,
+        "full_at": null,
+        "first_bingo5": false,
+        "first_full": false
+      }
+    },
+    {
+      "id": "player-dd6c818505",
+      "name": "테스트",
+      "checked": 10,
+      "bingo": 2,
+      "stars": 18,
+      "tokens": 0,
+      "last_update": "2025-12-29T13:10:00+09:00",
+      "checked_codes": [
+        "B04",
+        "D02",
+        "A13",
+        "A09",
+        "C08",
+        "A02",
+        "A08",
+        "A14",
+        "W04",
+        "B08"
+      ],
+      "achievements": {
+        "bingo5": false,
+        "bingo5_at": null,
+        "full": false,
+        "full_at": null,
+        "first_bingo5": false,
+        "first_full": false
+      }
     }
   ]
 }

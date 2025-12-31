@@ -1,6 +1,7 @@
 const CANVAS_SIZE = { width: 1080, height: 1350 };
 const BOARD_CANVAS_SIZE = { width: 1080, height: 1080 };
-const BOARDS_URL = "./data/boards.json";
+const DEFAULT_BOARDS_URL = "./data/boards.json";
+const DEFAULT_PROGRESS_URL = "./data/progress.json";
 
 const tierLabels = {
   beginner: "초보",
@@ -15,6 +16,24 @@ const palette = {
   accentSoft: "rgba(251, 191, 36, 0.28)",
   card: "rgba(15, 23, 42, 0.8)",
   stroke: "rgba(255, 255, 255, 0.2)",
+};
+
+const badgeStyles = {
+  bingo: {
+    fill: "rgba(59, 130, 246, 0.28)",
+    stroke: "rgba(96, 165, 250, 0.9)",
+    text: "rgba(219, 234, 254, 0.98)",
+  },
+  full: {
+    fill: "rgba(251, 191, 36, 0.3)",
+    stroke: "rgba(251, 191, 36, 0.9)",
+    text: "rgba(254, 243, 199, 0.98)",
+  },
+  first: {
+    fill: "rgba(245, 158, 11, 0.32)",
+    stroke: "rgba(245, 158, 11, 0.95)",
+    text: "rgba(255, 247, 237, 0.98)",
+  },
 };
 
 const defaults = {
@@ -41,6 +60,8 @@ const refs = {
   boardStatus: document.getElementById("boardStatus"),
   boardRefreshBtn: document.getElementById("boardRefreshBtn"),
   boardDownloadBtn: document.getElementById("boardDownloadBtn"),
+  boardShowChecks: document.getElementById("boardShowChecks"),
+  boardShowEffects: document.getElementById("boardShowEffects"),
 };
 
 const ctx = refs.canvas.getContext("2d");
@@ -50,6 +71,40 @@ const images = {
   logo: null,
 };
 let boards = [];
+let progressLookup = { byId: new Map(), byName: new Map() };
+let boardFallbackNotice = "";
+
+function normalizeBaseUrl(url) {
+  return (url || "").trim().replace(/\/+$/, "");
+}
+
+function getApiBase() {
+  const stored = localStorage.getItem("mrc_submit_api_base") || "";
+  return normalizeBaseUrl(stored);
+}
+
+function getBoardsUrl() {
+  const base = getApiBase();
+  return base ? `${base}/api/v1/boards` : DEFAULT_BOARDS_URL;
+}
+
+function getProgressUrl() {
+  const base = getApiBase();
+  return base ? `${base}/api/v1/progress` : DEFAULT_PROGRESS_URL;
+}
+
+async function loadJsonWithFallback(primaryUrl, fallbackUrl) {
+  try {
+    const res = await fetch(primaryUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`요청 실패: ${res.status}`);
+    return { data: await res.json(), fallback: false };
+  } catch (err) {
+    if (primaryUrl === fallbackUrl) throw err;
+    const res = await fetch(fallbackUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`요청 실패: ${res.status}`);
+    return { data: await res.json(), fallback: true };
+  }
+}
 
 function setStatus(message) {
   refs.status.textContent = message || "";
@@ -223,7 +278,7 @@ function drawTemplate() {
   ctx.fillText("퍼즐형 빙고 러닝 인증", width / 2, logoY + logoHeight + 46);
   ctx.font = '500 22px "Segoe UI", system-ui, sans-serif';
   ctx.fillStyle = palette.muted;
-  ctx.fillText("MRC Binggo 2025W · Personal Proof Template", width / 2, logoY + logoHeight + 80);
+  ctx.fillText("MRC Bingo 2025W · Personal Proof Template", width / 2, logoY + logoHeight + 80);
 
   ctx.textAlign = "left";
   const shotX = 90;
@@ -316,6 +371,32 @@ function findBoardMatch() {
   return matches[0];
 }
 
+function getProgressForBoard(board) {
+  if (!board) return null;
+  if (board.player_id && progressLookup.byId.has(board.player_id)) {
+    return progressLookup.byId.get(board.player_id);
+  }
+  if (board.name && progressLookup.byName.has(board.name)) {
+    return progressLookup.byName.get(board.name);
+  }
+  return null;
+}
+
+function getCheckedCodes(progress) {
+  if (!progress || !Array.isArray(progress.checked_codes)) return new Set();
+  return new Set(progress.checked_codes);
+}
+
+function shouldShowChecks() {
+  if (!refs.boardShowChecks) return true;
+  return refs.boardShowChecks.checked;
+}
+
+function shouldShowEffects() {
+  if (!refs.boardShowEffects) return true;
+  return refs.boardShowEffects.checked;
+}
+
 function getTypeColor(type) {
   switch (type) {
     case "A":
@@ -333,12 +414,148 @@ function getTypeColor(type) {
   }
 }
 
-function drawBoardGrid(board) {
+function buildBoardLines(grid) {
+  const lines = [];
+  if (!Array.isArray(grid) || grid.length !== 5 || grid.some((row) => !Array.isArray(row) || row.length !== 5)) {
+    return lines;
+  }
+
+  for (let row = 0; row < 5; row += 1) {
+    const line = [];
+    for (let col = 0; col < 5; col += 1) {
+      const code = grid[row][col]?.code;
+      if (!code) {
+        line.length = 0;
+        break;
+      }
+      line.push({ row, col, code });
+    }
+    if (line.length === 5) lines.push(line);
+  }
+
+  for (let col = 0; col < 5; col += 1) {
+    const line = [];
+    for (let row = 0; row < 5; row += 1) {
+      const code = grid[row][col]?.code;
+      if (!code) {
+        line.length = 0;
+        break;
+      }
+      line.push({ row, col, code });
+    }
+    if (line.length === 5) lines.push(line);
+  }
+
+  const diag1 = [];
+  const diag2 = [];
+  for (let i = 0; i < 5; i += 1) {
+    const code1 = grid[i][i]?.code;
+    const code2 = grid[i][4 - i]?.code;
+    if (!code1 || !code2) {
+      diag1.length = 0;
+      diag2.length = 0;
+      break;
+    }
+    diag1.push({ row: i, col: i, code: code1 });
+    diag2.push({ row: i, col: 4 - i, code: code2 });
+  }
+  if (diag1.length === 5) lines.push(diag1);
+  if (diag2.length === 5) lines.push(diag2);
+
+  return lines;
+}
+
+function getCompletedLines(lines, checkedCodes) {
+  if (!lines.length || checkedCodes.size === 0) return [];
+  return lines.filter((line) => line.every((cell) => checkedCodes.has(cell.code)));
+}
+
+function drawCheckedOverlay(x, y, size) {
+  boardCtx.save();
+  boardCtx.fillStyle = "rgba(34, 197, 94, 0.18)";
+  roundRect(boardCtx, x + 6, y + 6, size - 12, size - 12, 12);
+  boardCtx.fill();
+  boardCtx.restore();
+}
+
+function drawCheckMark(x, y, size) {
+  boardCtx.save();
+  const cx = x + size - 26;
+  const cy = y + 26;
+  boardCtx.beginPath();
+  boardCtx.fillStyle = "rgba(34, 197, 94, 0.9)";
+  boardCtx.arc(cx, cy, 16, 0, Math.PI * 2);
+  boardCtx.fill();
+  boardCtx.fillStyle = "#0b1020";
+  boardCtx.font = '700 18px "Segoe UI", system-ui, sans-serif';
+  boardCtx.textAlign = "center";
+  boardCtx.textBaseline = "middle";
+  boardCtx.fillText("✓", cx, cy + 1);
+  boardCtx.restore();
+}
+
+function drawBingoLines(lines, gridX, gridY, cellSize, color) {
+  if (!lines.length) return;
+  boardCtx.save();
+  boardCtx.strokeStyle = color || "rgba(251, 191, 36, 0.75)";
+  boardCtx.lineWidth = 10;
+  boardCtx.lineCap = "round";
+  boardCtx.shadowColor = color || "rgba(251, 191, 36, 0.6)";
+  boardCtx.shadowBlur = 18;
+  lines.forEach((line) => {
+    const first = line[0];
+    const last = line[line.length - 1];
+    const x1 = gridX + (first.col + 0.5) * cellSize;
+    const y1 = gridY + (first.row + 0.5) * cellSize;
+    const x2 = gridX + (last.col + 0.5) * cellSize;
+    const y2 = gridY + (last.row + 0.5) * cellSize;
+    boardCtx.beginPath();
+    boardCtx.moveTo(x1, y1);
+    boardCtx.lineTo(x2, y2);
+    boardCtx.stroke();
+  });
+  boardCtx.restore();
+}
+
+function drawAchievementBadges(badges, x, y, maxWidth, height = 28, fontSize = 18) {
+  if (!badges.length) return;
+  boardCtx.save();
+  boardCtx.textAlign = "left";
+  boardCtx.textBaseline = "middle";
+  boardCtx.font = `700 ${fontSize}px "Segoe UI", system-ui, sans-serif`;
+  let offsetX = x;
+  const limit = maxWidth ? x + maxWidth : null;
+  badges.forEach((badge) => {
+    const style = badgeStyles[badge.style] || badgeStyles.bingo;
+    const textWidth = boardCtx.measureText(badge.text).width;
+    const padX = 14;
+    const width = textWidth + padX * 2;
+    if (limit && offsetX + width > limit) {
+      return;
+    }
+    roundRect(boardCtx, offsetX, y, width, height, 16);
+    boardCtx.fillStyle = style.fill;
+    boardCtx.fill();
+    boardCtx.strokeStyle = style.stroke;
+    boardCtx.lineWidth = 2;
+    boardCtx.stroke();
+    boardCtx.fillStyle = style.text;
+    boardCtx.fillText(badge.text, offsetX + padX, y + height / 2 + 1);
+    offsetX += width + 8;
+  });
+  boardCtx.restore();
+}
+
+function drawBoardGrid(board, progress) {
   const width = BOARD_CANVAS_SIZE.width;
   const height = BOARD_CANVAS_SIZE.height;
   refs.boardCanvas.width = width;
   refs.boardCanvas.height = height;
   boardCtx.clearRect(0, 0, width, height);
+
+  const showChecks = shouldShowChecks();
+  const showEffects = shouldShowEffects();
+  const checkedCodes = getCheckedCodes(progress);
 
   if (images.bg) {
     drawCover(boardCtx, images.bg, 0, 0, width, height);
@@ -366,10 +583,12 @@ function drawBoardGrid(board) {
   boardCtx.fill();
 
   const name = board?.name || getValue(refs.name, defaults.name);
+  const nameFont = '700 34px "Segoe UI", system-ui, sans-serif';
+  const nameBaseline = padding + 34;
   boardCtx.fillStyle = palette.text;
-  boardCtx.font = '700 34px "Segoe UI", system-ui, sans-serif';
+  boardCtx.font = nameFont;
   boardCtx.textAlign = "left";
-  boardCtx.fillText(name, padding, padding + 34);
+  boardCtx.fillText(name, padding, nameBaseline);
   boardCtx.font = '600 20px "Segoe UI", system-ui, sans-serif';
   boardCtx.fillStyle = palette.muted;
   boardCtx.fillText("#모두의러닝겨울방학빙고게임 @modu_running", padding, padding + 66);
@@ -384,7 +603,54 @@ function drawBoardGrid(board) {
 
   boardCtx.textAlign = "left";
 
-  const grid = board?.grid || [];
+  const grid = Array.isArray(board?.grid) ? board.grid : [];
+  const boardLines = showEffects ? buildBoardLines(grid) : [];
+  const completedLines = showEffects ? getCompletedLines(boardLines, checkedCodes) : [];
+  const checkedCount = typeof progress?.checked === "number" ? progress.checked : checkedCodes.size;
+  const bingoCount = typeof progress?.bingo === "number" ? progress.bingo : completedLines.length;
+  const achievements = progress?.achievements || {};
+  const hasFull = achievements.full || checkedCount >= 25 || checkedCodes.size >= 25;
+  const hasBingo5 = achievements.bingo5 || bingoCount >= 5 || completedLines.length >= 5;
+  const glowColor = showEffects
+    ? achievements.first_full
+      ? "rgba(245, 158, 11, 0.95)"
+      : hasFull
+        ? "rgba(251, 191, 36, 0.85)"
+        : hasBingo5
+          ? "rgba(59, 130, 246, 0.7)"
+          : null
+    : null;
+
+  const badges = [];
+  if (showEffects) {
+    if (achievements.first_full) badges.push({ text: "퍼스트 올빙고", style: "first" });
+    else if (hasFull) badges.push({ text: "올빙고", style: "full" });
+    if (achievements.first_bingo5) badges.push({ text: "퍼스트 5빙고", style: "first" });
+    else if (hasBingo5) badges.push({ text: "5빙고", style: "bingo" });
+  }
+
+  if (badges.length > 0) {
+    boardCtx.font = nameFont;
+    const nameWidth = boardCtx.measureText(name).width;
+    const badgesX = padding + nameWidth + 16;
+    const maxWidth = width - badgesX - padding - 8;
+    const badgeHeight = 24;
+    const badgeY = nameBaseline - badgeHeight + 4;
+    drawAchievementBadges(badges, badgesX, badgeY, maxWidth, badgeHeight, 16);
+  }
+
+  if (glowColor) {
+    boardCtx.save();
+    boardCtx.strokeStyle = glowColor;
+    boardCtx.lineWidth = 6;
+    boardCtx.shadowColor = glowColor;
+    boardCtx.shadowBlur = 24;
+    roundRect(boardCtx, gridX - 14, gridY - 14, gridSize + 28, gridSize + 28, 20);
+    boardCtx.stroke();
+    boardCtx.restore();
+  }
+
+  const cellMeta = [];
   for (let row = 0; row < 5; row += 1) {
     for (let col = 0; col < 5; col += 1) {
       const cell = grid[row]?.[col];
@@ -402,26 +668,87 @@ function drawBoardGrid(board) {
       roundRect(boardCtx, x + 4, y + 4, cellSize - 8, cellSize - 8, 14);
       boardCtx.stroke();
 
-      if (!cell) continue;
-
-      boardCtx.fillStyle = palette.text;
-      boardCtx.font = '700 40px "Segoe UI", system-ui, sans-serif';
-      boardCtx.fillText(cell.code || "", x + 12, y + 38);
-
-      boardCtx.font = '500 28px "Segoe UI", system-ui, sans-serif';
-      const title = cell.title || "";
-      const titleLines = wrapText(boardCtx, title, cellSize - 24).slice(0, 2);
-      titleLines.forEach((line, index) => {
-        boardCtx.fillText(line, x + 12, y + 78 + index * 28);
-      });
-
-      if (cell.stars) {
-        boardCtx.font = '600 32px "Segoe UI", system-ui, sans-serif';
-        const stars = "★".repeat(cell.stars);
-        boardCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        boardCtx.fillText(stars, x + 12, y + cellSize - 14);
-      }
+      cellMeta.push({ cell, x, y, size: cellSize });
     }
+  }
+
+  if (showChecks && checkedCodes.size > 0) {
+    cellMeta.forEach(({ cell, x, y, size }) => {
+      if (!cell?.code || !checkedCodes.has(cell.code)) return;
+      drawCheckedOverlay(x, y, size);
+    });
+  }
+
+  if (showEffects && completedLines.length > 0) {
+    const lineColor = glowColor || "rgba(251, 191, 36, 0.75)";
+    drawBingoLines(completedLines, gridX, gridY, cellSize, lineColor);
+  }
+
+  cellMeta.forEach(({ cell, x, y, size }) => {
+    if (!cell) return;
+
+    boardCtx.fillStyle = palette.text;
+    boardCtx.font = '700 40px "Segoe UI", system-ui, sans-serif';
+    boardCtx.fillText(cell.code || "", x + 12, y + 38);
+
+    boardCtx.font = '500 28px "Segoe UI", system-ui, sans-serif';
+    const title = cell.title || "";
+    const titleLines = wrapText(boardCtx, title, size - 24).slice(0, 2);
+    titleLines.forEach((line, index) => {
+      boardCtx.fillText(line, x + 12, y + 78 + index * 28);
+    });
+
+    if (cell.stars) {
+      boardCtx.font = '600 32px "Segoe UI", system-ui, sans-serif';
+      const stars = "★".repeat(cell.stars);
+      boardCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+      boardCtx.fillText(stars, x + 12, y + size - 14);
+    }
+  });
+
+  if (showChecks && checkedCodes.size > 0) {
+    cellMeta.forEach(({ cell, x, y, size }) => {
+      if (!cell?.code || !checkedCodes.has(cell.code)) return;
+      drawCheckMark(x, y, size);
+    });
+  }
+}
+
+async function loadBoardsAndProgress() {
+  const boardsUrl = getBoardsUrl();
+  const progressUrl = getProgressUrl();
+  const fallbackBoards = boardsUrl !== DEFAULT_BOARDS_URL ? DEFAULT_BOARDS_URL : boardsUrl;
+  const fallbackProgress = progressUrl !== DEFAULT_PROGRESS_URL ? DEFAULT_PROGRESS_URL : progressUrl;
+
+  const boardsResult = await loadJsonWithFallback(boardsUrl, fallbackBoards);
+  boards = Array.isArray(boardsResult.data?.boards) ? boardsResult.data.boards : [];
+
+  let progressResult = { data: { players: [] }, fallback: false };
+  try {
+    progressResult = await loadJsonWithFallback(progressUrl, fallbackProgress);
+  } catch {
+    progressResult = { data: { players: [] }, fallback: true };
+  }
+
+  progressLookup = { byId: new Map(), byName: new Map() };
+  const players = Array.isArray(progressResult.data?.players) ? progressResult.data.players : [];
+  players.forEach((player) => {
+    if (player.id) progressLookup.byId.set(player.id, player);
+    if (player.name) progressLookup.byName.set(player.name, player);
+  });
+
+  boardFallbackNotice = boardsResult.fallback || progressResult.fallback ? "서버 접속 불가: 예시 데이터" : "";
+}
+
+async function refreshBoardData() {
+  if (!refs.boardCanvas) return;
+  setBoardStatus("빙고판 불러오는 중...");
+  try {
+    await loadBoardsAndProgress();
+    renderBoard();
+  } catch (err) {
+    setBoardStatus(err?.message || "빙고판 데이터를 불러오지 못했습니다.");
+    drawBoardPlaceholder();
   }
 }
 
@@ -433,15 +760,29 @@ function renderBoard() {
     drawBoardPlaceholder();
     return;
   }
-  setBoardStatus(`빙고판 로드 완료 · ${board.name || "-"} (${board.id?.slice(0, 8) || "board"})`);
-  drawBoardGrid(board);
+  const progress = getProgressForBoard(board);
+  const checkedCodes = getCheckedCodes(progress);
+  const checkedCount = typeof progress?.checked === "number" ? progress.checked : checkedCodes.size;
+  const statusParts = [
+    `빙고판 로드 완료`,
+    board.name || "-",
+    `(${board.id?.slice(0, 8) || "board"})`,
+  ];
+  if (progress) {
+    statusParts.push(`진행도 ${checkedCount}/25`);
+  } else {
+    statusParts.push("진행도 없음");
+  }
+  if (boardFallbackNotice) statusParts.push(boardFallbackNotice);
+  setBoardStatus(statusParts.join(" · "));
+  drawBoardGrid(board, progress);
 }
 
 function downloadBoard() {
   if (!refs.boardCanvas) return;
   try {
     const dateStamp = formatDate(refs.date.value).replace(/\./g, "");
-    const filename = `mrc_binggo_board_${dateStamp}.png`;
+    const filename = `mrc_bingo_board_${dateStamp}.png`;
     const link = document.createElement("a");
     link.href = refs.boardCanvas.toDataURL("image/png");
     link.download = filename;
@@ -459,7 +800,7 @@ function updateTemplate() {
 function downloadTemplate() {
   try {
     const dateStamp = formatDate(refs.date.value).replace(/\./g, "");
-    const filename = `mrc_binggo_template_${dateStamp}.png`;
+    const filename = `mrc_bingo_template_${dateStamp}.png`;
     const link = document.createElement("a");
     link.href = refs.canvas.toDataURL("image/png");
     link.download = filename;
@@ -494,6 +835,15 @@ function bindInputs() {
   });
 }
 
+function bindBoardOptions() {
+  if (refs.boardShowChecks) {
+    refs.boardShowChecks.addEventListener("change", renderBoard);
+  }
+  if (refs.boardShowEffects) {
+    refs.boardShowEffects.addEventListener("change", renderBoard);
+  }
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -514,7 +864,7 @@ async function init() {
     updateTemplate();
   });
   if (refs.boardRefreshBtn) {
-    refs.boardRefreshBtn.addEventListener("click", renderBoard);
+    refs.boardRefreshBtn.addEventListener("click", refreshBoardData);
   }
   if (refs.boardDownloadBtn) {
     refs.boardDownloadBtn.addEventListener("click", downloadBoard);
@@ -523,25 +873,18 @@ async function init() {
   if (refs.name) {
     refs.name.addEventListener("input", renderBoard);
   }
+  bindBoardOptions();
 
   try {
-    const [bg, logo, boardsRes] = await Promise.all([
+    const [bg, logo] = await Promise.all([
       loadImage("./assets/Jungrang-cheon.png"),
       loadImage("./assets/logo.png"),
-      fetch(BOARDS_URL, { cache: "no-store" }),
     ]);
     images.bg = bg;
     images.logo = logo;
-    if (boardsRes.ok) {
-      const boardsJson = await boardsRes.json();
-      boards = Array.isArray(boardsJson.boards) ? boardsJson.boards : [];
-    } else {
-      setBoardStatus("빙고판 데이터를 불러오지 못했습니다.");
-      drawBoardPlaceholder();
-    }
     setStatus("");
     updateTemplate();
-    if (boardsRes.ok) renderBoard();
+    await refreshBoardData();
   } catch (err) {
     setStatus(err?.message || "이미지를 불러오지 못했습니다.");
     setBoardStatus("빙고판 데이터를 불러오지 못했습니다.");

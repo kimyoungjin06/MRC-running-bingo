@@ -167,6 +167,7 @@ function renderProgressTable(players, keyword) {
       <span>빙고</span>
       <span>별</span>
       <span>토큰</span>
+      <span>업적</span>
       <span>최근</span>
     </div>
   `;
@@ -175,14 +176,22 @@ function renderProgressTable(players, keyword) {
     const checked = getCheckedCount(player);
     const stars = player.stars ?? 0;
     const tokens = player.tokens ?? 0;
+    const achievements = player.achievements || {};
+    const badges = [];
+    if (achievements.first_bingo5) badges.push('<span class="badge badge--first">퍼스트 5빙고</span>');
+    if (achievements.first_full) badges.push('<span class="badge badge--first">퍼스트 올빙고</span>');
+    if (achievements.bingo5) badges.push('<span class="badge badge--bingo">5빙고</span>');
+    if (achievements.full) badges.push('<span class="badge badge--full">올빙고</span>');
+    const badgeHtml = badges.length ? badges.join(" ") : '<span class="muted">-</span>';
     const row = document.createElement("div");
-    row.className = "progress-row";
+    row.className = `progress-row${achievements.first_bingo5 || achievements.first_full ? " progress-row--first" : ""}`;
     row.innerHTML = `
       <span>${player.name || "-"}</span>
       <span>${checked}</span>
       <span>${player.bingo ?? 0}</span>
       <span>${stars}</span>
       <span>${tokens}</span>
+      <span class="progress-badges">${badgeHtml}</span>
       <span>${formatTime(player.last_update || "")}</span>
     `;
     table.appendChild(row);

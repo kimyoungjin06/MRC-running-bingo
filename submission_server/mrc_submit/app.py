@@ -7,6 +7,7 @@ import mimetypes
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -336,6 +337,39 @@ def _format_boards_meta(meta: dict | None, fallback_name: str) -> str:
     return f"{source_name} · 생성 {generated_at}"
 
 
+def _build_admin_query(
+    *,
+    status: str,
+    key: str,
+    run_date: str | None = None,
+    runner: str | None = None,
+    msg: str | None = None,
+) -> str:
+    params: dict[str, str] = {"status": status, "key": key}
+    if run_date:
+        params["run_date"] = run_date
+    if runner:
+        params["runner"] = runner
+    if msg:
+        params["msg"] = msg
+    return urlencode(params)
+
+
+def _build_filter_options(items: list[dict]) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
+    date_counts: dict[str, int] = {}
+    runner_counts: dict[str, int] = {}
+    for item in items:
+        run_date = item.get("run_date")
+        if run_date:
+            date_counts[run_date] = date_counts.get(run_date, 0) + 1
+        name = item.get("player_name")
+        if name:
+            runner_counts[name] = runner_counts.get(name, 0) + 1
+    date_options = sorted(date_counts.items(), key=lambda x: x[0], reverse=True)
+    runner_options = sorted(runner_counts.items(), key=lambda x: (-x[1], x[0]))
+    return date_options, runner_options
+
+
 def _build_submission_indexes(items: list[dict]) -> tuple[dict[date, list[str]], dict[str, list[date]]]:
     by_date: dict[date, list[str]] = {}
     by_player: dict[str, list[date]] = {}
@@ -367,23 +401,23 @@ def _build_insights(item: dict, *, by_date: dict[date, list[str]], by_player: di
 
     for code in codes:
         if code == "A01":
-            threshold = tier_value(tier, 3.0, 4.0, 5.0)
+            threshold = tier_value(tier, 5.0, 7.0, 10.0)
             value = f"{distance_km}km" if distance_km is not None else "거리 입력 필요"
             insights.append(f"A01 기준: {_tier_label(tier)} {threshold}km, 제출 {value}")
         elif code == "A02":
-            threshold = tier_value(tier, 5.0, 6.0, 7.0)
+            threshold = tier_value(tier, 6.0, 8.0, 12.0)
             value = f"{distance_km}km" if distance_km is not None else "거리 입력 필요"
             insights.append(f"A02 기준: {_tier_label(tier)} {threshold}km, 제출 {value}")
         elif code == "A03":
-            threshold = tier_value(tier, 7.0, 8.0, 9.0)
+            threshold = tier_value(tier, 7.0, 10.0, 15.0)
             value = f"{distance_km}km" if distance_km is not None else "거리 입력 필요"
             insights.append(f"A03 기준: {_tier_label(tier)} {threshold}km, 제출 {value}")
         elif code == "A04":
-            threshold = tier_value(tier, 30.0, 35.0, 40.0)
+            threshold = tier_value(tier, 30.0, 40.0, 50.0)
             value = f"{duration_min}분" if duration_min is not None else "시간 입력 필요"
             insights.append(f"A04 기준: {_tier_label(tier)} {threshold}분, 제출 {value}")
         elif code == "A05":
-            threshold = tier_value(tier, 45.0, 50.0, 55.0)
+            threshold = tier_value(tier, 50.0, 60.0, 70.0)
             value = f"{duration_min}분" if duration_min is not None else "시간 입력 필요"
             insights.append(f"A05 기준: {_tier_label(tier)} {threshold}분, 제출 {value}")
         elif code == "B01":
@@ -425,18 +459,69 @@ def _build_insights(item: dict, *, by_date: dict[date, list[str]], by_player: di
 def _render_admin_page(
     *,
     items: list[dict],
+    index_items: list[dict],
     status: str,
     key: str,
     message: str,
     boards_meta: str,
     card_titles: dict[str, str],
+    run_date_filter: str | None,
+    runner_filter: str | None,
 ) -> str:
-    by_date, by_player = _build_submission_indexes(items)
+    by_date, by_player = _build_submission_indexes(index_items)
+    date_options, runner_options = _build_filter_options(index_items)
     submitters = _unique_preserve([item.get("player_name") for item in items if item.get("player_name")])
     if submitters:
         submitters_html = f"{len(submitters)}명 · " + ", ".join(html.escape(name) for name in submitters)
     else:
         submitters_html = "-"
+    filter_query = _build_admin_query(
+        status=status,
+        key=key,
+        run_date=run_date_filter,
+        runner=runner_filter,
+    )
+    filter_summary_parts = []
+    if runner_filter:
+        filter_summary_parts.append(f"러너: {html.escape(runner_filter)}")
+    if run_date_filter:
+        filter_summary_parts.append(f"날짜: {_format_run_date(run_date_filter)}")
+    filter_summary = " · ".join(filter_summary_parts) if filter_summary_parts else "없음"
+
+    runner_select_options = ['<option value="">전체</option>']
+    for name, count in runner_options:
+        selected = " selected" if runner_filter == name else ""
+        escaped = html.escape(name)
+        runner_select_options.append(f"<option value=\"{escaped}\"{selected}>{escaped} ({count})</option>")
+    runner_select_html = "\n".join(runner_select_options)
+
+    date_select_options = ['<option value="">전체</option>']
+    for run_date, count in date_options:
+        selected = " selected" if run_date_filter == run_date else ""
+        label = _format_run_date(run_date)
+        date_select_options.append(
+            f"<option value=\"{html.escape(run_date)}\"{selected}>{html.escape(label)} ({count})</option>"
+        )
+    date_select_html = "\n".join(date_select_options)
+
+    date_links = []
+    for run_date, count in date_options:
+        link_query = _build_admin_query(status=status, key=key, run_date=run_date, runner=runner_filter)
+        label = _format_run_date(run_date)
+        active = " is-active" if run_date_filter == run_date else ""
+        date_links.append(
+            f"<a class=\"filter-chip{active}\" href=\"/admin?{link_query}#submissions\">{html.escape(label)} ({count})</a>"
+        )
+    date_links_html = " ".join(date_links) if date_links else "-"
+
+    runner_links = []
+    for name, count in runner_options:
+        link_query = _build_admin_query(status=status, key=key, run_date=run_date_filter, runner=name)
+        active = " is-active" if runner_filter == name else ""
+        runner_links.append(
+            f"<a class=\"filter-chip{active}\" href=\"/admin?{link_query}#submissions\">{html.escape(name)} ({count})</a>"
+        )
+    runner_links_html = " ".join(runner_links) if runner_links else "-"
     rows = []
     for item in items:
         created = _format_created_at(item.get("created_at"))
@@ -469,7 +554,7 @@ def _render_admin_page(
             <td>{insights_html}</td>
             <td>{files_html}</td>
             <td>
-              <form method="post" action="/admin/review/{item['id']}?status={status}&key={key}">
+              <form method="post" action="/admin/review/{item['id']}?{filter_query}">
                 <input type="hidden" name="admin_key" value="{key}" />
                 <input type="text" name="reviewer" placeholder="검토자" />
                 <input type="text" name="review_notes" value="{review_notes}" placeholder="메모" />
@@ -481,7 +566,12 @@ def _render_admin_page(
         """
         rows.append(row)
 
-    status_label = _status_label(status)
+    pending_query = _build_admin_query(status="pending", key=key, run_date=run_date_filter, runner=runner_filter)
+    approved_query = _build_admin_query(status="approved", key=key, run_date=run_date_filter, runner=runner_filter)
+    rejected_query = _build_admin_query(status="rejected", key=key, run_date=run_date_filter, runner=runner_filter)
+    all_query = _build_admin_query(status="all", key=key, run_date=run_date_filter, runner=runner_filter)
+
+    status_label = f"{_status_label(status)} · {len(items)}건"
     table_rows = "\n".join(rows) if rows else "<tr><td colspan='9'>제출 내역 없음</td></tr>"
     return f"""
 <!doctype html>
@@ -516,6 +606,16 @@ def _render_admin_page(
     .header-actions form {{ display: grid; gap: 8px; }}
     .section-row {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; flex-wrap: wrap; }}
     .action-form button {{ padding: 8px 12px; border-radius: 8px; border: 1px solid #111827; background: #111827; color: #ffffff; }}
+    .filter-panel {{ margin: 12px 0; padding: 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: #f9fafb; }}
+    .filter-form {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }}
+    .filter-form label {{ display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151; }}
+    .filter-form select {{ min-width: 160px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; }}
+    .filter-meta {{ font-size: 12px; color: #6b7280; margin-bottom: 8px; }}
+    .filter-lists {{ display: grid; gap: 6px; margin-top: 8px; font-size: 12px; color: #374151; }}
+    .filter-list {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }}
+    .filter-label {{ font-weight: 600; margin-right: 4px; }}
+    .filter-chip {{ display: inline-block; padding: 4px 8px; border-radius: 999px; border: 1px solid #d1d5db; text-decoration: none; color: #111827; background: #ffffff; }}
+    .filter-chip.is-active {{ border-color: #111827; background: #111827; color: #ffffff; }}
   </style>
 </head>
 <body>
@@ -539,10 +639,10 @@ def _render_admin_page(
   </header>
 
   <nav class="nav-bar">
-    <a class="btn-link" href="/admin?status=pending&key={key}#submissions">대기</a>
-    <a class="btn-link" href="/admin?status=approved&key={key}#submissions">승인</a>
-    <a class="btn-link" href="/admin?status=rejected&key={key}#submissions">반려</a>
-    <a class="btn-link" href="/admin?status=all&key={key}#submissions">전체</a>
+    <a class="btn-link" href="/admin?{pending_query}#submissions">대기</a>
+    <a class="btn-link" href="/admin?{approved_query}#submissions">승인</a>
+    <a class="btn-link" href="/admin?{rejected_query}#submissions">반려</a>
+    <a class="btn-link" href="/admin?{all_query}#submissions">전체</a>
   </nav>
 
   <section id="submissions">
@@ -551,9 +651,40 @@ def _render_admin_page(
         <h2 class="section-title">제출 목록 ({status_label})</h2>
         <p class="hint">자동 판정 결과와 검토 메모를 확인하세요.</p>
       </div>
-      <form method="post" action="/admin/publish?status={status}&key={key}" class="action-form">
+      <form method="post" action="/admin/publish?{filter_query}" class="action-form">
         <button type="submit">업데이트 반영</button>
       </form>
+    </div>
+    <div class="filter-panel">
+      <div class="filter-meta">현재 필터: {filter_summary}</div>
+      <form method="get" action="/admin" class="filter-form">
+        <input type="hidden" name="status" value="{html.escape(status)}" />
+        <input type="hidden" name="key" value="{html.escape(key)}" />
+        <label>
+          러너
+          <select name="runner">
+            {runner_select_html}
+          </select>
+        </label>
+        <label>
+          날짜
+          <select name="run_date">
+            {date_select_html}
+          </select>
+        </label>
+        <button type="submit">필터 적용</button>
+        <a class="btn-link" href="/admin?{_build_admin_query(status=status, key=key)}#submissions">초기화</a>
+      </form>
+      <div class="filter-lists">
+        <div class="filter-list">
+          <span class="filter-label">일자별</span>
+          {date_links_html}
+        </div>
+        <div class="filter-list">
+          <span class="filter-label">러너별</span>
+          {runner_links_html}
+        </div>
+      </div>
     </div>
     <table>
       <thead>
@@ -720,7 +851,7 @@ def create_app() -> FastAPI:
     storage = Storage(settings.storage_dir)
     storage.init()
 
-    app = FastAPI(title="MRC Binggo Submit API", version="0.1.0")
+    app = FastAPI(title="MRC Bingo Submit API", version="0.1.0")
     app.state.settings = settings
     app.state.storage = storage
     app.state.base_dir = base_dir
@@ -880,6 +1011,7 @@ def create_app() -> FastAPI:
             hill_repeats=_parse_int(form.get("hill_repeats")),
             has_light_gear=_parse_bool(form.get("has_light_gear")),
             is_silent=_parse_bool(form.get("is_silent")),
+            with_new_runner=_parse_bool(form.get("with_new_runner")),
             did_warmup=_parse_bool(form.get("did_warmup")),
             did_cooldown=_parse_bool(form.get("did_cooldown")),
             did_foam_roll=_parse_bool(form.get("did_foam_roll")),
@@ -1046,6 +1178,13 @@ def create_app() -> FastAPI:
             items = storage.list_submissions(status=None, limit=2000)
         else:
             items = storage.list_submissions(status=status_value, limit=200)
+        run_date_filter = (request.query_params.get("run_date") or "").strip() or None
+        runner_filter = (request.query_params.get("runner") or "").strip() or None
+        index_items = items
+        if runner_filter:
+            items = [item for item in items if item.get("player_name") == runner_filter]
+        if run_date_filter:
+            items = [item for item in items if item.get("run_date") == run_date_filter]
         carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
         card_titles = _load_card_titles(carddeck_path)
         boards_path = settings.storage_dir / "boards" / "boards.json"
@@ -1060,11 +1199,14 @@ def create_app() -> FastAPI:
         return HTMLResponse(
             _render_admin_page(
                 items=items,
+                index_items=index_items,
                 status=status,
                 key=key,
                 message=message,
                 boards_meta=boards_meta,
                 card_titles=card_titles,
+                run_date_filter=run_date_filter,
+                runner_filter=runner_filter,
             )
         )
 
@@ -1115,6 +1257,8 @@ def create_app() -> FastAPI:
     async def admin_review(submission_id: str, request: Request) -> RedirectResponse:
         form = await request.form()
         key = _require_admin(settings, request, dict(form))
+        run_date = (request.query_params.get("run_date") or "").strip() or None
+        runner = (request.query_params.get("runner") or "").strip() or None
         status = (form.get("review_status") or "").strip().lower()
         if status not in ("approved", "rejected", "pending"):
             raise HTTPException(status_code=400, detail="review_status invalid")
@@ -1131,15 +1275,17 @@ def create_app() -> FastAPI:
         if _parse_bool(os.getenv("MRC_ADMIN_AUTO_PUBLISH")):
             _, publish_message = _run_publish_now(settings.storage_dir)
             message = f"{message} · {publish_message}"
-        redirect = f"/admin?status={status}&key={key}&msg={message}"
+        redirect = f"/admin?{_build_admin_query(status=status, key=key, run_date=run_date, runner=runner, msg=message)}"
         return RedirectResponse(url=redirect, status_code=303)
 
     @app.post("/admin/publish")
     async def admin_publish(request: Request, status: str = "pending") -> RedirectResponse:
         form = await request.form()
         key = _require_admin(settings, request, dict(form))
+        run_date = (request.query_params.get("run_date") or "").strip() or None
+        runner = (request.query_params.get("runner") or "").strip() or None
         _, message = _run_publish_now(settings.storage_dir)
-        redirect = f"/admin?status={status}&key={key}&msg={message}"
+        redirect = f"/admin?{_build_admin_query(status=status, key=key, run_date=run_date, runner=runner, msg=message)}"
         return RedirectResponse(url=redirect, status_code=303)
 
     @app.post("/admin/boards/upload")

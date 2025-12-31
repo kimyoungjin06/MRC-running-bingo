@@ -1203,6 +1203,15 @@ html[data-theme="light"] .custom-select__list {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
+.page--boards .board-cell--checked {
+  color: rgba(148, 163, 184, 0.55);
+}
+
+.page--boards .board-cell--checked .board-cell__title,
+.page--boards .board-cell--checked .board-cell__stars {
+  color: rgba(148, 163, 184, 0.45);
+}
+
 .board-cell--checked::after {
   content: "✓";
   position: absolute;
@@ -1462,7 +1471,8 @@ html[data-theme="light"] .custom-select__list {
 
 .progress-row {
   display: grid;
-  grid-template-columns: minmax(80px, 1.2fr) repeat(4, minmax(40px, 0.6fr)) minmax(90px, 1fr);
+  grid-template-columns: minmax(80px, 1.2fr) repeat(4, minmax(40px, 0.6fr)) minmax(140px, 1.2fr)
+    minmax(90px, 1fr);
   gap: 6px;
   align-items: center;
   padding: 8px 10px;
@@ -1504,9 +1514,66 @@ html[data-theme="light"] .custom-select__list {
     margin-right: 4px;
   }
   .progress-row span:nth-child(6)::before {
+    content: "업적 ";
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .progress-row span:nth-child(7)::before {
     content: "최근 ";
     color: var(--muted);
     margin-right: 4px;
+  }
+}
+
+.progress-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  color: var(--text);
+}
+
+.badge--bingo {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+}
+
+.badge--full {
+  border-color: color-mix(in srgb, var(--type-w) 70%, var(--border));
+  background: color-mix(in srgb, var(--type-w) 18%, var(--panel));
+}
+
+.badge--first {
+  border-color: #f59e0b;
+  background: color-mix(in srgb, #fbbf24 18%, var(--panel));
+  color: #92400e;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+  animation: badge-pulse 1.8s ease-in-out infinite;
+}
+
+.progress-row--first {
+  border-color: #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+}
+
+@keyframes badge-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.04);
+    filter: brightness(1.12);
   }
 }
 
@@ -1554,6 +1621,17 @@ html[data-theme="light"] .custom-select__list {
 .submit-status {
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.board-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.board--preview {
+  margin-top: 12px;
 }
 
 .preview {

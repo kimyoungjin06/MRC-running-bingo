@@ -4,6 +4,8 @@ const STORAGE_KEYS = {
   playerName: "mrc_submit_player_name",
   tier: "mrc_submit_tier",
 };
+const DEFAULT_BOARDS_URL = "./data/boards.json";
+const DEFAULT_PROGRESS_URL = "./data/progress.json";
 
 const customSelectStates = [];
 let customSelectEventsBound = false;
@@ -16,6 +18,21 @@ function normalizeBaseUrl(url) {
   const trimmed = (url || "").trim();
   if (!trimmed) return "";
   return trimmed.replace(/\/+$/, "");
+}
+
+function getApiBase() {
+  const stored = localStorage.getItem(STORAGE_KEYS.apiBase) || "";
+  return normalizeBaseUrl(stored);
+}
+
+function getBoardsUrl() {
+  const base = getApiBase();
+  return base ? `${base}/api/v1/boards` : DEFAULT_BOARDS_URL;
+}
+
+function getProgressUrl() {
+  const base = getApiBase();
+  return base ? `${base}/api/v1/progress` : DEFAULT_PROGRESS_URL;
 }
 
 function getAdminBaseOverride() {
@@ -63,6 +80,97 @@ function setMessage(el, message, type) {
     return;
   }
   el.setAttribute("data-type", type || "info");
+}
+
+async function loadJsonWithFallback(primaryUrl, fallbackUrl) {
+  try {
+    const res = await fetch(primaryUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`요청 실패: ${res.status}`);
+    return { data: await res.json(), fallback: false };
+  } catch (err) {
+    if (primaryUrl === fallbackUrl) throw err;
+    const res = await fetch(fallbackUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`요청 실패: ${res.status}`);
+    return { data: await res.json(), fallback: true };
+  }
+}
+
+function createBoardCell(cell, isChecked) {
+  const div = document.createElement("div");
+  div.className = "board-cell board-cell--static";
+  if (cell.type) div.classList.add(`board-cell--${cell.type}`);
+  if (isChecked) div.classList.add("board-cell--checked");
+
+  const code = document.createElement("div");
+  code.className = "board-cell__code";
+  code.textContent = cell.code || cell.raw || "—";
+
+  const stars = document.createElement("div");
+  stars.className = "board-cell__stars";
+  stars.textContent = cell.stars ? "★".repeat(cell.stars) : "";
+
+  const title = document.createElement("div");
+  title.className = "board-cell__title";
+  title.textContent = cell.title || "";
+
+  div.append(code, stars, title);
+  return div;
+}
+
+function renderBoardPreview(board, checkedCodes) {
+  const wrap = $("boardPreview");
+  wrap.innerHTML = "";
+  if (!board) return;
+  board.grid.forEach((row) => {
+    row.forEach((cell) => {
+      const isChecked = checkedCodes.has(cell.code);
+      wrap.appendChild(createBoardCell(cell, isChecked));
+    });
+  });
+}
+
+async function loadBoardPreview() {
+  const name = ($("playerName").value || "").trim();
+  const status = $("boardStatus");
+  if (!name) {
+    renderBoardPreview(null, new Set());
+    status.textContent = "이름을 입력하면 내 빙고판을 불러올 수 있어요.";
+    return;
+  }
+
+  const boardsUrl = getBoardsUrl();
+  const progressUrl = getProgressUrl();
+  const fallbackBoards = boardsUrl !== DEFAULT_BOARDS_URL ? DEFAULT_BOARDS_URL : boardsUrl;
+  const fallbackProgress = progressUrl !== DEFAULT_PROGRESS_URL ? DEFAULT_PROGRESS_URL : progressUrl;
+
+  status.textContent = "빙고판 불러오는 중...";
+  try {
+    const [boardsResult, progressResult] = await Promise.all([
+      loadJsonWithFallback(boardsUrl, fallbackBoards),
+      loadJsonWithFallback(progressUrl, fallbackProgress),
+    ]);
+    const boards = Array.isArray(boardsResult.data?.boards) ? boardsResult.data.boards : [];
+    const players = Array.isArray(progressResult.data?.players) ? progressResult.data.players : [];
+    const board = boards.find((item) => item?.name === name);
+    if (!board) {
+      renderBoardPreview(null, new Set());
+      status.textContent = "이름에 해당하는 빙고판이 없습니다.";
+      return;
+    }
+
+    const progress =
+      players.find((item) => item?.id && item.id === board.player_id) ||
+      players.find((item) => item?.name === name);
+    const checkedCodes = new Set(progress?.checked_codes || []);
+    renderBoardPreview(board, checkedCodes);
+    const countText = checkedCodes.size ? `진행도 ${checkedCodes.size}/25` : "아직 체크된 칸이 없습니다.";
+    const fallbackNote =
+      boardsResult.fallback || progressResult.fallback ? " · 서버 연결 불가: 예시 데이터" : "";
+    status.textContent = `${countText}${fallbackNote}`;
+  } catch (err) {
+    renderBoardPreview(null, new Set());
+    status.textContent = err?.message || "빙고판 정보를 불러오지 못했습니다.";
+  }
 }
 
 function collectClaimLabels() {
@@ -481,6 +589,7 @@ async function handleSaveConn() {
   try {
     await testConnection(apiBase, submitKey);
     setMessage($("connStatus"), "연결 성공", "success");
+    loadBoardPreview();
   } catch (err) {
     setMessage($("connStatus"), err?.message || String(err), "error");
   } finally {
@@ -496,10 +605,13 @@ function init() {
   $("apiBase").addEventListener("input", updateAdminLink);
   $("submitForm").addEventListener("submit", handleSubmit);
   $("playerName").addEventListener("input", savePlayerFields);
+  $("playerName").addEventListener("change", loadBoardPreview);
   $("tier").addEventListener("change", savePlayerFields);
   $("tokenEvent").addEventListener("change", updateTokenFields);
+  $("loadBoardBtn").addEventListener("click", loadBoardPreview);
   document.querySelectorAll(".claim-input").forEach((el) => el.addEventListener("input", renderRulePreview));
   updateTokenFields();
+  loadBoardPreview();
 }
 
 document.addEventListener("DOMContentLoaded", init);
