@@ -65,7 +65,7 @@ GitHub Pages에서 호출하려면 HTTPS가 필요합니다.
 - 13:00 KST: publish job 실행 (progress.json 생성)
 
 운영진 UI:
-- `https://<domain>/admin?key=<MRC_ADMIN_KEY>`
+- `https://<domain>/admin` 접속 후 운영진 키 입력
 
 ## 6) 점검/로그
 

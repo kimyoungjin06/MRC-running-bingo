@@ -50,7 +50,7 @@ docker compose up -d --build
 ```
 
 운영진 UI:
-- `https://<domain>/admin?key=<MRC_ADMIN_KEY>`
+- `https://<domain>/admin` 접속 후 운영진 키 입력
 
 보드 업로드:
 - `MRC_CARDDECK_PATH`가 올바른지 확인(로컬: `../CardDeck.md`, Docker: `/app/CardDeck.md`)

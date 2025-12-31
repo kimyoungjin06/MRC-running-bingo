@@ -25,6 +25,7 @@ from .validation import RunPayload, evaluate_card, normalize_claim_labels, norma
 
 
 DEFAULT_SEED = "2025W"
+ADMIN_COOKIE_NAME = "mrc_admin"
 
 
 def _parse_bool(value: Any) -> bool:
@@ -126,10 +127,11 @@ def _load_board_codes(storage_dir: Path, *, carddeck_path: Path, seed: str, map_
 def _admin_key_from(request: Request, form: dict | None = None) -> str:
     if "x-mrc-admin-key" in request.headers:
         return request.headers.get("x-mrc-admin-key") or ""
-    if request.query_params.get("key"):
-        return request.query_params.get("key") or ""
     if form:
         return str(form.get("admin_key") or "")
+    cookie = request.cookies.get(ADMIN_COOKIE_NAME)
+    if cookie:
+        return cookie
     return ""
 
 
@@ -138,6 +140,15 @@ def _require_admin(settings, request: Request, form: dict | None = None) -> str:
     if settings.admin_key and key != settings.admin_key:
         raise HTTPException(status_code=401, detail="admin key required")
     return key
+
+
+def _is_secure_request(request: Request) -> bool:
+    if request.url.scheme == "https":
+        return True
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    if forwarded_proto:
+        return forwarded_proto.split(",")[0].strip().lower() == "https"
+    return False
 
 
 async def _read_upload_limited(upload: UploadFile, *, max_bytes: int) -> bytes:
@@ -340,12 +351,11 @@ def _format_boards_meta(meta: dict | None, fallback_name: str) -> str:
 def _build_admin_query(
     *,
     status: str,
-    key: str,
     run_date: str | None = None,
     runner: str | None = None,
     msg: str | None = None,
 ) -> str:
-    params: dict[str, str] = {"status": status, "key": key}
+    params: dict[str, str] = {"status": status}
     if run_date:
         params["run_date"] = run_date
     if runner:
@@ -461,7 +471,6 @@ def _render_admin_page(
     items: list[dict],
     index_items: list[dict],
     status: str,
-    key: str,
     message: str,
     boards_meta: str,
     card_titles: dict[str, str],
@@ -477,7 +486,6 @@ def _render_admin_page(
         submitters_html = "-"
     filter_query = _build_admin_query(
         status=status,
-        key=key,
         run_date=run_date_filter,
         runner=runner_filter,
     )
@@ -506,7 +514,7 @@ def _render_admin_page(
 
     date_links = []
     for run_date, count in date_options:
-        link_query = _build_admin_query(status=status, key=key, run_date=run_date, runner=runner_filter)
+        link_query = _build_admin_query(status=status, run_date=run_date, runner=runner_filter)
         label = _format_run_date(run_date)
         active = " is-active" if run_date_filter == run_date else ""
         date_links.append(
@@ -516,7 +524,7 @@ def _render_admin_page(
 
     runner_links = []
     for name, count in runner_options:
-        link_query = _build_admin_query(status=status, key=key, run_date=run_date_filter, runner=name)
+        link_query = _build_admin_query(status=status, run_date=run_date_filter, runner=name)
         active = " is-active" if runner_filter == name else ""
         runner_links.append(
             f"<a class=\"filter-chip{active}\" href=\"/admin?{link_query}#submissions\">{html.escape(name)} ({count})</a>"
@@ -538,7 +546,7 @@ def _render_admin_page(
         files = item.get("files") or []
         file_count = len(files)
         if file_count:
-            file_link = f"/admin/submissions/{item['id']}?key={key}"
+            file_link = f"/admin/submissions/{item['id']}"
             files_html = f"<a class=\"btn-link\" href=\"{file_link}\">사진 보기 ({file_count})</a>"
         else:
             files_html = "-"
@@ -555,7 +563,6 @@ def _render_admin_page(
             <td>{files_html}</td>
             <td>
               <form method="post" action="/admin/review/{item['id']}?{filter_query}">
-                <input type="hidden" name="admin_key" value="{key}" />
                 <input type="text" name="reviewer" placeholder="검토자" />
                 <input type="text" name="review_notes" value="{review_notes}" placeholder="메모" />
                 <button type="submit" name="review_status" value="approved">승인</button>
@@ -566,10 +573,10 @@ def _render_admin_page(
         """
         rows.append(row)
 
-    pending_query = _build_admin_query(status="pending", key=key, run_date=run_date_filter, runner=runner_filter)
-    approved_query = _build_admin_query(status="approved", key=key, run_date=run_date_filter, runner=runner_filter)
-    rejected_query = _build_admin_query(status="rejected", key=key, run_date=run_date_filter, runner=runner_filter)
-    all_query = _build_admin_query(status="all", key=key, run_date=run_date_filter, runner=runner_filter)
+    pending_query = _build_admin_query(status="pending", run_date=run_date_filter, runner=runner_filter)
+    approved_query = _build_admin_query(status="approved", run_date=run_date_filter, runner=runner_filter)
+    rejected_query = _build_admin_query(status="rejected", run_date=run_date_filter, runner=runner_filter)
+    all_query = _build_admin_query(status="all", run_date=run_date_filter, runner=runner_filter)
 
     status_label = f"{_status_label(status)} · {len(items)}건"
     table_rows = "\n".join(rows) if rows else "<tr><td colspan='9'>제출 내역 없음</td></tr>"
@@ -631,7 +638,7 @@ def _render_admin_page(
     <div class="header-actions">
       <h2 class="section-title">빙고판 업로드</h2>
       <p class="hint">설문 응답(.xlsx)을 업로드하면 보드가 갱신됩니다.</p>
-      <form method="post" action="/admin/boards/upload?key={key}" enctype="multipart/form-data">
+      <form method="post" action="/admin/boards/upload" enctype="multipart/form-data">
         <input type="file" name="file" accept=".xlsx" required />
         <button type="submit">업로드</button>
       </form>
@@ -659,7 +666,6 @@ def _render_admin_page(
       <div class="filter-meta">현재 필터: {filter_summary}</div>
       <form method="get" action="/admin" class="filter-form">
         <input type="hidden" name="status" value="{html.escape(status)}" />
-        <input type="hidden" name="key" value="{html.escape(key)}" />
         <label>
           러너
           <select name="runner">
@@ -673,7 +679,7 @@ def _render_admin_page(
           </select>
         </label>
         <button type="submit">필터 적용</button>
-        <a class="btn-link" href="/admin?{_build_admin_query(status=status, key=key)}#submissions">초기화</a>
+        <a class="btn-link" href="/admin?{_build_admin_query(status=status)}#submissions">초기화</a>
       </form>
       <div class="filter-lists">
         <div class="filter-list">
@@ -714,7 +720,6 @@ def _render_admin_submission_page(
     *,
     submission_id: str,
     meta: dict[str, Any],
-    key: str,
     card_titles: dict[str, str],
 ) -> str:
     name = meta.get("player_name") or "-"
@@ -736,7 +741,7 @@ def _render_admin_submission_page(
     file_items = []
     for idx, info in enumerate(files):
         filename = info.get("filename") or info.get("stored_as") or f"file-{idx + 1}"
-        file_url = f"/admin/submissions/{submission_id}/files/{idx}?key={key}"
+        file_url = f"/admin/submissions/{submission_id}/files/{idx}"
         escaped = html.escape(filename)
         if Path(filename).suffix.lower() in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"):
             file_items.append(
@@ -784,11 +789,11 @@ def _render_admin_submission_page(
 </head>
 <body>
   <div class="nav-bar">
-    <a class="btn-link" href="/admin?status=pending&key={key}#submissions">대기</a>
-    <a class="btn-link" href="/admin?status=approved&key={key}#submissions">승인</a>
-    <a class="btn-link" href="/admin?status=rejected&key={key}#submissions">반려</a>
-    <a class="btn-link" href="/admin?status=all&key={key}#submissions">전체</a>
-    <a class="btn-link" href="/admin?status=pending&key={key}#boards">빙고판 업로드</a>
+    <a class="btn-link" href="/admin?status=pending#submissions">대기</a>
+    <a class="btn-link" href="/admin?status=approved#submissions">승인</a>
+    <a class="btn-link" href="/admin?status=rejected#submissions">반려</a>
+    <a class="btn-link" href="/admin?status=all#submissions">전체</a>
+    <a class="btn-link" href="/admin?status=pending#boards">빙고판 업로드</a>
   </div>
   <h1>제출 상세</h1>
   <div class="meta">
@@ -833,8 +838,9 @@ def _render_admin_login(path: str, message: str | None = None) -> str:
 <body>
   <h1>운영진 인증</h1>
   <p>운영진 키를 입력하세요.</p>
-  <form method="get" action="{html.escape(path)}">
-    <input type="password" name="key" placeholder="운영진 키" required />
+  <form method="post" action="/admin/login">
+    <input type="password" name="admin_key" placeholder="운영진 키" required />
+    <input type="hidden" name="next" value="{html.escape(path)}" />
     <button type="submit">입장</button>
   </form>
   {message_html}
@@ -939,7 +945,7 @@ def create_app() -> FastAPI:
         except ValueError:
             raise HTTPException(status_code=400, detail="티어(tier)가 올바르지 않습니다. beginner/intermediate/advanced")
 
-        seed = str(form.get("seed") or DEFAULT_SEED).strip() or DEFAULT_SEED
+        seed = (os.getenv("MRC_SEED", DEFAULT_SEED) or DEFAULT_SEED).strip() or DEFAULT_SEED
         map_labels = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
         carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
 
@@ -1171,8 +1177,10 @@ def create_app() -> FastAPI:
         key = _admin_key_from(request)
         if settings.admin_key and key != settings.admin_key:
             message = "운영진 키가 필요합니다." if not key else "운영진 키가 올바르지 않습니다."
-            action = f"{request.url.path}?status={status}"
-            return HTMLResponse(_render_admin_login(action, message), status_code=401)
+            next_path = request.url.path
+            if request.url.query:
+                next_path = f"{next_path}?{request.url.query}"
+            return HTMLResponse(_render_admin_login(next_path, message), status_code=401)
         status_value = (status or "pending").lower()
         if status_value == "all":
             items = storage.list_submissions(status=None, limit=2000)
@@ -1201,7 +1209,6 @@ def create_app() -> FastAPI:
                 items=items,
                 index_items=index_items,
                 status=status,
-                key=key,
                 message=message,
                 boards_meta=boards_meta,
                 card_titles=card_titles,
@@ -1210,12 +1217,38 @@ def create_app() -> FastAPI:
             )
         )
 
+    @app.post("/admin/login")
+    async def admin_login(request: Request) -> HTMLResponse | RedirectResponse:
+        form = await request.form()
+        admin_key = str(form.get("admin_key") or "")
+        next_path = str(form.get("next") or "/admin")
+        if not next_path.startswith("/"):
+            next_path = "/admin"
+        if settings.admin_key and admin_key != settings.admin_key:
+            return HTMLResponse(_render_admin_login(next_path, "운영진 키가 올바르지 않습니다."), status_code=401)
+        response = RedirectResponse(url=next_path, status_code=303)
+        max_age = _parse_int(os.getenv("MRC_ADMIN_COOKIE_MAX_AGE")) or 60 * 60 * 12
+        secure_flag = _parse_bool(os.getenv("MRC_ADMIN_COOKIE_SECURE")) or _is_secure_request(request)
+        response.set_cookie(
+            ADMIN_COOKIE_NAME,
+            admin_key,
+            max_age=max_age,
+            httponly=True,
+            samesite="lax",
+            secure=secure_flag,
+            path="/",
+        )
+        return response
+
     @app.get("/admin/submissions/{submission_id}")
     def admin_submission(submission_id: str, request: Request) -> HTMLResponse:
         key = _admin_key_from(request)
         if settings.admin_key and key != settings.admin_key:
             message = "운영진 키가 필요합니다." if not key else "운영진 키가 올바르지 않습니다."
-            return HTMLResponse(_render_admin_login(request.url.path, message), status_code=401)
+            next_path = request.url.path
+            if request.url.query:
+                next_path = f"{next_path}?{request.url.query}"
+            return HTMLResponse(_render_admin_login(next_path, message), status_code=401)
         meta = _load_submission_meta(storage, submission_id)
         if not meta:
             raise HTTPException(status_code=404, detail="submission not found")
@@ -1225,7 +1258,6 @@ def create_app() -> FastAPI:
             _render_admin_submission_page(
                 submission_id=submission_id,
                 meta=meta,
-                key=key,
                 card_titles=card_titles,
             )
         )
@@ -1275,7 +1307,7 @@ def create_app() -> FastAPI:
         if _parse_bool(os.getenv("MRC_ADMIN_AUTO_PUBLISH")):
             _, publish_message = _run_publish_now(settings.storage_dir)
             message = f"{message} · {publish_message}"
-        redirect = f"/admin?{_build_admin_query(status=status, key=key, run_date=run_date, runner=runner, msg=message)}"
+        redirect = f"/admin?{_build_admin_query(status=status, run_date=run_date, runner=runner, msg=message)}"
         return RedirectResponse(url=redirect, status_code=303)
 
     @app.post("/admin/publish")
@@ -1285,7 +1317,7 @@ def create_app() -> FastAPI:
         run_date = (request.query_params.get("run_date") or "").strip() or None
         runner = (request.query_params.get("runner") or "").strip() or None
         _, message = _run_publish_now(settings.storage_dir)
-        redirect = f"/admin?{_build_admin_query(status=status, key=key, run_date=run_date, runner=runner, msg=message)}"
+        redirect = f"/admin?{_build_admin_query(status=status, run_date=run_date, runner=runner, msg=message)}"
         return RedirectResponse(url=redirect, status_code=303)
 
     @app.post("/admin/boards/upload")
@@ -1312,7 +1344,7 @@ def create_app() -> FastAPI:
         out_path = boards_dir / "boards.json"
         write_boards_json(boards_data, out_path)
 
-        redirect = f"/admin?status=pending&key={key}&msg=boards+updated"
+        redirect = "/admin?status=pending&msg=boards+updated"
         return RedirectResponse(url=redirect, status_code=303)
 
     return app
