@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   playerName: "mrc_submit_player_name",
   tier: "mrc_submit_tier",
 };
+const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
 const DEFAULT_BOARDS_URL = "./data/boards.json";
 const DEFAULT_PROGRESS_URL = "./data/progress.json";
 
@@ -21,7 +22,8 @@ function normalizeBaseUrl(url) {
 }
 
 function getApiBase() {
-  const stored = localStorage.getItem(STORAGE_KEYS.apiBase) || "";
+  const stored = localStorage.getItem(STORAGE_KEYS.apiBase);
+  if (stored === null) return normalizeBaseUrl(DEFAULT_API_BASE);
   return normalizeBaseUrl(stored);
 }
 
@@ -56,9 +58,10 @@ function buildAdminUrl(base) {
 function updateAdminLink() {
   const link = $("adminLink");
   if (!link) return;
-  const storedBase = localStorage.getItem(STORAGE_KEYS.apiBase) || "";
+  const storedBase = localStorage.getItem(STORAGE_KEYS.apiBase);
+  const fallbackBase = storedBase === null ? DEFAULT_API_BASE : storedBase || "";
   const overrideBase = getAdminBaseOverride();
-  const adminBase = normalizeBaseUrl(overrideBase || storedBase);
+  const adminBase = normalizeBaseUrl(overrideBase || fallbackBase);
   const adminUrl = buildAdminUrl(adminBase);
   if (!adminUrl) {
     link.href = "#";
@@ -236,7 +239,8 @@ function saveConn() {
 }
 
 function loadConn() {
-  $("apiBase").value = localStorage.getItem(STORAGE_KEYS.apiBase) || "";
+  const storedBase = localStorage.getItem(STORAGE_KEYS.apiBase);
+  $("apiBase").value = storedBase === null ? DEFAULT_API_BASE : storedBase;
   $("submitKey").value = localStorage.getItem(STORAGE_KEYS.submitKey) || "";
   $("playerName").value = localStorage.getItem(STORAGE_KEYS.playerName) || "";
   $("tier").value = localStorage.getItem(STORAGE_KEYS.tier) || "beginner";

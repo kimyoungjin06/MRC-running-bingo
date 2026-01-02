@@ -1218,7 +1218,7 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/admin/login")
-    async def admin_login(request: Request) -> HTMLResponse | RedirectResponse:
+    async def admin_login(request: Request):
         form = await request.form()
         admin_key = str(form.get("admin_key") or "")
         next_path = str(form.get("next") or "/admin")
