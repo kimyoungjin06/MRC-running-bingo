@@ -209,7 +209,7 @@ function previewRules(labels) {
   const warnings = [];
   if (labels.length === 0) warnings.push("카드 코드(라벨)를 1개 이상 입력하세요.");
   if (invalid.size > 0) warnings.push(`카드 코드 형식이 이상해요: ${Array.from(invalid).join(", ")}`);
-  if (labels.length > 3) warnings.push("러닝 1회당 최대 3칸까지만 가능해요.");
+  if (labels.length > 2) warnings.push("러닝 1회당 최대 2칸까지만 가능해요.");
   if (counts.A > 1) warnings.push("A는 1회당 최대 1칸.");
   if (counts.B > 1) warnings.push("B는 1회당 최대 1칸.");
   if (counts.C > 1) warnings.push("C는 1회당 최대 1칸.");

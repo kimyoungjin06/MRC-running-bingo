@@ -333,8 +333,8 @@ def validate_claim_labels(labels: list[str]) -> tuple[bool, list[str]]:
     if invalid:
         messages.append(f"카드 코드 형식이 올바르지 않아요: {', '.join(invalid)}")
 
-    if len(clean) > 3:
-        return False, ["러닝 1회당 최대 3칸까지만 체크할 수 있어요."]
+    if len(clean) > 2:
+        return False, ["러닝 1회당 최대 2칸까지만 체크할 수 있어요."]
 
     type_counts: dict[CardType, int] = {"A": 0, "B": 0, "C": 0, "D": 0, "W": 0}
     for label in clean:
