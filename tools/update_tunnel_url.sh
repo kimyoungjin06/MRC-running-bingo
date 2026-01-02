@@ -6,7 +6,7 @@ ENV_FILE="$REPO_ROOT/submission_server/.env"
 SUBMIT_JS="$REPO_ROOT/docs/submit.js"
 SERVICE_NAME="mrc-cloudflared"
 
-URL=$(sudo journalctl -u "$SERVICE_NAME" --no-pager | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -n 1 || true)
+URL=$(journalctl -u "$SERVICE_NAME" --no-pager | grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -n 1 || true)
 
 if [[ -z "$URL" ]]; then
   echo "No trycloudflare URL found in journal for $SERVICE_NAME." >&2
