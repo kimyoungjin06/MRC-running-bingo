@@ -371,6 +371,11 @@ a:hover {
   transition: transform 160ms ease, border-color 160ms ease;
 }
 
+.card.is-elevated {
+  position: relative;
+  z-index: 60;
+}
+
 .card:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--border) 65%, var(--accent) 35%);
