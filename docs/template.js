@@ -2,6 +2,7 @@ const CANVAS_SIZE = { width: 1080, height: 1350 };
 const BOARD_CANVAS_SIZE = { width: 1080, height: 1080 };
 const DEFAULT_BOARDS_URL = "./data/boards.json";
 const DEFAULT_PROGRESS_URL = "./data/progress.json";
+const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
 
 const tierLabels = {
   beginner: "초보",
@@ -79,7 +80,8 @@ function normalizeBaseUrl(url) {
 }
 
 function getApiBase() {
-  const stored = localStorage.getItem("mrc_submit_api_base") || "";
+  const stored = localStorage.getItem("mrc_submit_api_base");
+  if (stored === null) return normalizeBaseUrl(DEFAULT_API_BASE);
   return normalizeBaseUrl(stored);
 }
 

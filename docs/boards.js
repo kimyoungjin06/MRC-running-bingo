@@ -1,4 +1,5 @@
 const DEFAULT_DATA_URL = "./data/boards.json";
+const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
 const DEFAULT_PROGRESS_URL = "./data/progress.json";
 const AUTO_REFRESH_MS = 60000;
 const DEFAULT_SEED = "2025W";
@@ -13,7 +14,8 @@ function normalizeBaseUrl(url) {
 }
 
 function getApiBase() {
-  const stored = localStorage.getItem("mrc_submit_api_base") || "";
+  const stored = localStorage.getItem("mrc_submit_api_base");
+  if (stored === null) return normalizeBaseUrl(DEFAULT_API_BASE);
   return normalizeBaseUrl(stored);
 }
 

@@ -1,11 +1,13 @@
 const DEFAULT_DATA_URL = "./data/progress.json";
+const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
 
 function normalizeBaseUrl(url) {
   return (url || "").trim().replace(/\/+$/, "");
 }
 
 function getApiBase() {
-  const stored = localStorage.getItem("mrc_submit_api_base") || "";
+  const stored = localStorage.getItem("mrc_submit_api_base");
+  if (stored === null) return normalizeBaseUrl(DEFAULT_API_BASE);
   return normalizeBaseUrl(stored);
 }
 
