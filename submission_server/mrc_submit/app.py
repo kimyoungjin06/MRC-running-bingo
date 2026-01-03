@@ -908,12 +908,28 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/boards")
     def boards() -> JSONResponse:
         env_path = os.getenv("MRC_BOARDS_PATH")
-        path = Path(env_path) if env_path else settings.storage_dir / "boards" / "boards.json"
-        if not path.exists():
-            raise HTTPException(status_code=404, detail="boards not found")
+        boards_dir = settings.storage_dir / "boards"
+        path = Path(env_path) if env_path else boards_dir / "boards.json"
         seed = os.getenv("MRC_SEED", DEFAULT_SEED)
         map_labels = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
         carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
+
+        # Auto-generate boards.json from the latest upload if needed.
+        if env_path is None:
+            boards_dir.mkdir(parents=True, exist_ok=True)
+            uploads = sorted(boards_dir.glob("upload-*.xlsx"), key=lambda p: p.stat().st_mtime)
+            latest_upload = uploads[-1] if uploads else None
+            if latest_upload and (not path.exists() or latest_upload.stat().st_mtime > path.stat().st_mtime):
+                boards_data = generate_boards_from_xlsx(
+                    latest_upload,
+                    carddeck_path,
+                    label_seed=seed,
+                    use_label_map=map_labels,
+                )
+                write_boards_json(boards_data, path)
+
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="boards not found")
         data = load_boards_json(
             path,
             carddeck_path=carddeck_path,
