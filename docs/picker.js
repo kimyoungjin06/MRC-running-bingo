@@ -145,6 +145,8 @@ function closeCustomSelect(state) {
   if (!state.open) return;
   state.open = false;
   state.wrapper.classList.remove("is-open");
+  const card = state.wrapper.closest(".card");
+  if (card) card.classList.remove("is-elevated");
   state.button.setAttribute("aria-expanded", "false");
 }
 
@@ -155,6 +157,8 @@ function openCustomSelect(state, focusSelected) {
   });
   state.open = true;
   state.wrapper.classList.add("is-open");
+  const card = state.wrapper.closest(".card");
+  if (card) card.classList.add("is-elevated");
   state.button.setAttribute("aria-expanded", "true");
   if (focusSelected) {
     const target = state.options[state.selectedIndex];
