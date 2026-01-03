@@ -670,6 +670,7 @@ html[data-theme="light"] .field select option {
 .custom-select {
   position: relative;
   width: 100%;
+  z-index: 0;
 }
 
 .custom-select__native {
@@ -741,6 +742,10 @@ html[data-theme="light"] .field select option {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+}
+
+.custom-select.is-open {
+  z-index: 40;
 }
 
 .custom-select__option {
