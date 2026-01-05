@@ -38,8 +38,8 @@ if [[ ! -f "$TEMPLATE_JS" ]]; then
   exit 1
 fi
 
-# Update .env
-sed -i "s|^MRC_SUBMIT_ALLOWED_ORIGINS=.*|MRC_SUBMIT_ALLOWED_ORIGINS=$URL|" "$ENV_FILE"
+# Update .env (keep GitHub Pages origin + tunnel)
+sed -i "s|^MRC_SUBMIT_ALLOWED_ORIGINS=.*|MRC_SUBMIT_ALLOWED_ORIGINS=https://kimyoungjin06.github.io,$URL|" "$ENV_FILE"
 
 # Update default API base references
 sed -i "s|^const DEFAULT_API_BASE = \".*\";|const DEFAULT_API_BASE = \"$URL\";|" "$SUBMIT_JS"
