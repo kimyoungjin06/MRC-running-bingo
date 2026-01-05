@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
@@ -476,6 +476,7 @@ def _render_admin_page(
     card_titles: dict[str, str],
     run_date_filter: str | None,
     runner_filter: str | None,
+    admin_key: str,
 ) -> str:
     by_date, by_player = _build_submission_indexes(index_items)
     date_options, runner_options = _build_filter_options(index_items)
@@ -563,6 +564,7 @@ def _render_admin_page(
             <td>{files_html}</td>
             <td>
               <form method="post" action="/admin/review/{item['id']}?{filter_query}">
+                <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
                 <input type="text" name="reviewer" placeholder="검토자" />
                 <input type="text" name="review_notes" value="{review_notes}" placeholder="메모" />
                 <button type="submit" name="review_status" value="approved">승인</button>
@@ -639,6 +641,7 @@ def _render_admin_page(
       <h2 class="section-title">빙고판 업로드</h2>
       <p class="hint">설문 응답(.xlsx)을 업로드하면 보드가 갱신됩니다.</p>
       <form method="post" action="/admin/boards/upload" enctype="multipart/form-data">
+        <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
         <input type="file" name="file" accept=".xlsx" required />
         <button type="submit">업로드</button>
       </form>
@@ -659,6 +662,7 @@ def _render_admin_page(
         <p class="hint">자동 판정 결과와 검토 메모를 확인하세요.</p>
       </div>
       <form method="post" action="/admin/publish?{filter_query}" class="action-form">
+        <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
         <button type="submit">업데이트 반영</button>
       </form>
     </div>
@@ -1230,6 +1234,7 @@ def create_app() -> FastAPI:
                 card_titles=card_titles,
                 run_date_filter=run_date_filter,
                 runner_filter=runner_filter,
+                admin_key=key,
             )
         )
 
@@ -1327,9 +1332,13 @@ def create_app() -> FastAPI:
         return RedirectResponse(url=redirect, status_code=303)
 
     @app.post("/admin/publish")
-    async def admin_publish(request: Request, status: str = "pending") -> RedirectResponse:
+    async def admin_publish(
+        request: Request,
+        status: str = "pending",
+        admin_key: str = Form(""),
+    ) -> RedirectResponse:
         form = await request.form()
-        key = _require_admin(settings, request, dict(form))
+        key = _require_admin(settings, request, dict(form) | {"admin_key": admin_key})
         run_date = (request.query_params.get("run_date") or "").strip() or None
         runner = (request.query_params.get("runner") or "").strip() or None
         _, message = _run_publish_now(settings.storage_dir)
@@ -1337,8 +1346,12 @@ def create_app() -> FastAPI:
         return RedirectResponse(url=redirect, status_code=303)
 
     @app.post("/admin/boards/upload")
-    async def admin_boards_upload(request: Request, file: UploadFile = File(...)) -> RedirectResponse:
-        key = _require_admin(settings, request)
+    async def admin_boards_upload(
+        request: Request,
+        file: UploadFile = File(...),
+        admin_key: str = Form(""),
+    ) -> RedirectResponse:
+        key = _require_admin(settings, request, {"admin_key": admin_key})
         if not file.filename:
             raise HTTPException(status_code=400, detail="file required")
         data = await file.read()
