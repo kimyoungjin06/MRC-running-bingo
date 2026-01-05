@@ -2,6 +2,7 @@ const SEASON_SEED = "2025W";
 const FORM_ACTION =
   "https://docs.google.com/forms/d/e/1FAIpQLSeB4Ig3egZquyy6NiOrNfWhj7e7NTpUJy0EBHdOaeZT2FSQRA/formResponse";
 const FORM_NAME_ENTRY = "entry.233447481";
+const FORM_TIER_ENTRY = "entry.125690393";
 const FORM_CELL_MAP = [
   { row: 0, col: 0, entry: "entry.1425779500" },
   { row: 0, col: 1, entry: "entry.588661901" },
@@ -82,6 +83,12 @@ const TYPE_LABELS = {
   C: "Co-op",
   D: "Marathon",
   W: "Wild",
+};
+
+const TIER_LABELS = {
+  beginner: "초보",
+  intermediate: "중수",
+  advanced: "고수",
 };
 
 const BASE_COUNTS = { A: 10, B: 7, C: 5, D: 2, W: 1 };
@@ -883,6 +890,11 @@ function handleSubmit() {
     setMessage("이름을 입력해 주세요.", "error");
     return;
   }
+  const tierLabel = TIER_LABELS[state.tier] || "";
+  if (!tierLabel) {
+    setMessage("티어를 선택해 주세요.", "error");
+    return;
+  }
   const selectionErrors = validateSelection();
   const boardErrors = validateBoard();
   if (selectionErrors.length || boardErrors.length) {
@@ -892,6 +904,7 @@ function handleSubmit() {
 
   const payload = new URLSearchParams();
   payload.append(FORM_NAME_ENTRY, name);
+  payload.append(FORM_TIER_ENTRY, tierLabel);
   FORM_CELL_MAP.forEach((cell) => {
     const idx = getPlacementIndex(cell.row, cell.col);
     const cardId = state.placements[idx];
