@@ -1,6 +1,7 @@
 const DEFAULT_DATA_URL = "./data/boards.json";
 const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
 const DEFAULT_API_URL = `${DEFAULT_API_BASE}/api/v1/boards`;
+const DEFAULT_TIER_URL = "./data/tiers.json";
 const DEFAULT_PROGRESS_URL = "./data/progress.json";
 const AUTO_REFRESH_MS = 60000;
 const DEFAULT_SEED = "2025W";
@@ -49,6 +50,7 @@ const refs = {
 let allBoards = [];
 let progressLookup = { byId: new Map(), byName: new Map() };
 let noticeMessage = "";
+let tierLookup = new Map();
 
 function setMessage(text) {
   refs.boardsMessage.textContent = text || "";
@@ -62,6 +64,16 @@ function formatTimestamp(value) {
   if (!value) return "";
   if (value.includes("T")) return value.replace("T", " ").slice(0, 16);
   return value;
+}
+
+function formatTier(board) {
+  if (!board) return "";
+  if (board.tier_label) return board.tier_label;
+  const tier = (board.tier || "").toString().toLowerCase();
+  if (tier === "beginner") return "초보";
+  if (tier === "intermediate") return "중수";
+  if (tier === "advanced") return "고수";
+  return "";
 }
 
 function hashString(value) {
@@ -169,6 +181,30 @@ function hasLabelFields(data) {
   return false;
 }
 
+function buildTierLookup(data) {
+  const map = new Map();
+  const items = Array.isArray(data?.tiers) ? data.tiers : [];
+  items.forEach((item) => {
+    const name = (item?.name || "").trim();
+    if (!name) return;
+    const label = item?.label || "";
+    const tier = item?.tier || "";
+    map.set(name, label || tier);
+  });
+  return map;
+}
+
+async function loadTierFallback() {
+  try {
+    const res = await fetch(DEFAULT_TIER_URL, { cache: "no-store" });
+    if (!res.ok) return new Map();
+    const data = await res.json();
+    return buildTierLookup(data);
+  } catch {
+    return new Map();
+  }
+}
+
 async function applyLabelMapIfNeeded(data) {
   if (!data || typeof data !== "object") return false;
   if (data.label_map_applied || data.code_basis === "actual" || hasLabelFields(data)) return false;
@@ -269,6 +305,13 @@ function createBoardCard(board) {
   title.textContent = board.name || "이름 없음";
 
   titleWrap.appendChild(title);
+  const tierLabel = formatTier(board);
+  if (tierLabel) {
+    const tierBadge = document.createElement("span");
+    tierBadge.className = "board-card__badge";
+    tierBadge.textContent = tierLabel;
+    titleWrap.appendChild(tierBadge);
+  }
 
   if (checkedCodes.size > 0) {
     const badge = document.createElement("span");
@@ -336,6 +379,14 @@ async function loadBoards() {
       });
     await applyLabelMapIfNeeded(boardsJson);
     allBoards = Array.isArray(boardsJson.boards) ? boardsJson.boards : [];
+    tierLookup = await loadTierFallback();
+    if (tierLookup.size > 0) {
+      allBoards.forEach((board) => {
+        if (!board || board.tier_label || board.tier) return;
+        const label = tierLookup.get(board.name);
+        if (label) board.tier_label = label;
+      });
+    }
 
     progressLookup = { byId: new Map(), byName: new Map() };
     try {

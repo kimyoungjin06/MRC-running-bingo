@@ -1481,8 +1481,8 @@ html[data-theme="light"] .custom-select__list {
 
 .progress-row {
   display: grid;
-  grid-template-columns: minmax(80px, 1.2fr) repeat(4, minmax(40px, 0.6fr)) minmax(140px, 1.2fr)
-    minmax(90px, 1fr);
+  grid-template-columns: minmax(80px, 1.1fr) minmax(54px, 0.5fr) repeat(4, minmax(40px, 0.6fr))
+    minmax(140px, 1.2fr) minmax(90px, 1fr);
   gap: 6px;
   align-items: center;
   padding: 8px 10px;
@@ -1504,31 +1504,36 @@ html[data-theme="light"] .custom-select__list {
     gap: 4px 10px;
   }
   .progress-row span:nth-child(2)::before {
-    content: "체크 ";
+    content: "티어 ";
     color: var(--muted);
     margin-right: 4px;
   }
   .progress-row span:nth-child(3)::before {
-    content: "빙고 ";
+    content: "체크 ";
     color: var(--muted);
     margin-right: 4px;
   }
   .progress-row span:nth-child(4)::before {
-    content: "별 ";
+    content: "빙고 ";
     color: var(--muted);
     margin-right: 4px;
   }
   .progress-row span:nth-child(5)::before {
-    content: "토큰 ";
+    content: "별 ";
     color: var(--muted);
     margin-right: 4px;
   }
   .progress-row span:nth-child(6)::before {
-    content: "업적 ";
+    content: "토큰 ";
     color: var(--muted);
     margin-right: 4px;
   }
   .progress-row span:nth-child(7)::before {
+    content: "업적 ";
+    color: var(--muted);
+    margin-right: 4px;
+  }
+  .progress-row span:nth-child(8)::before {
     content: "최근 ";
     color: var(--muted);
     margin-right: 4px;

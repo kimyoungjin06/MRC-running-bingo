@@ -1,6 +1,9 @@
 const DEFAULT_DATA_URL = "./data/progress.json";
 const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
 const DEFAULT_API_URL = `${DEFAULT_API_BASE}/api/v1/progress`;
+const DEFAULT_BOARDS_URL = "./data/boards.json";
+const DEFAULT_BOARDS_API_URL = `${DEFAULT_API_BASE}/api/v1/boards`;
+const DEFAULT_TIER_URL = "./data/tiers.json";
 
 function normalizeBaseUrl(url) {
   return (url || "").trim().replace(/\/+$/, "");
@@ -38,6 +41,7 @@ const refs = {
 };
 
 let allPlayers = [];
+let tierLookup = new Map();
 
 function setMessage(el, text) {
   el.textContent = text || "";
@@ -47,6 +51,65 @@ function formatTime(value) {
   if (!value) return "";
   if (value.includes("T")) return value.replace("T", " ").slice(0, 16);
   return value;
+}
+
+function normalizeTierLabel(value) {
+  const raw = (value || "").toString().trim();
+  if (!raw) return "";
+  const lowered = raw.toLowerCase();
+  if (lowered === "beginner") return "초보";
+  if (lowered === "intermediate") return "중수";
+  if (lowered === "advanced") return "고수";
+  return raw;
+}
+
+function buildTierLookup(data) {
+  const map = new Map();
+  const items = Array.isArray(data?.tiers) ? data.tiers : [];
+  items.forEach((item) => {
+    const name = (item?.name || "").trim();
+    if (!name) return;
+    const label = normalizeTierLabel(item?.label || item?.tier || "");
+    if (label) map.set(name, label);
+  });
+  return map;
+}
+
+async function loadTierFallback() {
+  try {
+    const res = await fetch(DEFAULT_TIER_URL, { cache: "no-store" });
+    if (!res.ok) return new Map();
+    const data = await res.json();
+    return buildTierLookup(data);
+  } catch {
+    return new Map();
+  }
+}
+
+async function loadTierFromBoards(baseUrl) {
+  const url = baseUrl ? `${baseUrl}/api/v1/boards` : DEFAULT_BOARDS_API_URL;
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("boards load failed");
+    const data = await res.json();
+    const map = new Map();
+    const boards = Array.isArray(data?.boards) ? data.boards : [];
+    boards.forEach((board) => {
+      const name = (board?.name || "").trim();
+      if (!name) return;
+      const label = normalizeTierLabel(board?.tier_label || board?.tier || "");
+      if (label) map.set(name, label);
+    });
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function getTierLabel(player) {
+  const name = (player?.name || "").trim();
+  if (!name) return "-";
+  return tierLookup.get(name) || "-";
 }
 
 function getCheckedCount(player) {
@@ -166,6 +229,7 @@ function renderProgressTable(players, keyword) {
   table.innerHTML = `
     <div class="progress-row progress-row--header">
       <span>이름</span>
+      <span>티어</span>
       <span>체크</span>
       <span>빙고</span>
       <span>별</span>
@@ -190,6 +254,7 @@ function renderProgressTable(players, keyword) {
     row.className = `progress-row${achievements.first_bingo5 || achievements.first_full ? " progress-row--first" : ""}`;
     row.innerHTML = `
       <span>${player.name || "-"}</span>
+      <span>${getTierLabel(player)}</span>
       <span>${checked}</span>
       <span>${player.bingo ?? 0}</span>
       <span>${stars}</span>
@@ -224,6 +289,11 @@ async function loadProgress() {
       });
 
     refs.generatedAt.textContent = `최근 업데이트: ${formatTime(data.generated_at) || "-"}`;
+    const base = getApiBase();
+    tierLookup = await loadTierFromBoards(base);
+    if (tierLookup.size === 0) {
+      tierLookup = await loadTierFallback();
+    }
     renderSummary(data.summary || {});
     renderTop(data);
 

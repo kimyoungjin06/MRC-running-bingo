@@ -101,6 +101,23 @@ def _resolve_code(raw: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _normalize_tier(raw: str) -> tuple[str | None, str | None]:
+    value = (raw or "").strip()
+    if not value:
+        return None, None
+    normalized = value.lower()
+    mapping = {
+        "초보": "beginner",
+        "중수": "intermediate",
+        "고수": "advanced",
+        "beginner": "beginner",
+        "intermediate": "intermediate",
+        "advanced": "advanced",
+    }
+    tier = mapping.get(value, mapping.get(normalized))
+    return tier, value
+
+
 def _stable_id(value: str) -> str:
     digest = hashlib.sha1(value.encode("utf-8")).hexdigest()
     return digest[:10]
@@ -178,6 +195,8 @@ def generate_boards_from_xlsx(
         timestamp_raw = row.get(header_to_col.get("타임스탬프", ""), "")
         timestamp = _excel_serial_to_iso(timestamp_raw) or timestamp_raw or None
         email = row.get(header_to_col.get("이메일 주소", ""), "").strip() or None
+        tier_raw = row.get(header_to_col.get("내 티어", ""), "").strip()
+        tier, tier_label = _normalize_tier(tier_raw)
 
         player_id = f"player-{_stable_id(name + '|' + (email or ''))}"
         board_key = f"{name}|{timestamp_raw or ''}|{email or ''}"
@@ -190,6 +209,8 @@ def generate_boards_from_xlsx(
                 "name": name,
                 "timestamp": timestamp,
                 "email": email,
+                "tier": tier,
+                "tier_label": tier_label,
                 "grid": grid,
             }
         )
