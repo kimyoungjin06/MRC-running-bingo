@@ -581,6 +581,17 @@ def _render_admin_page(
         else:
             files_html = "-"
         insights_html = _build_insights(item, by_date=by_date, by_player=by_player)
+        action_html = "-"
+        if item.get("status") == "pending":
+            action_html = f"""
+              <form method="post" action="/admin/review/{item['id']}?{filter_query}">
+                <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
+                <input type="text" name="reviewer" placeholder="검토자" />
+                <input type="text" name="review_notes" value="{review_notes}" placeholder="메모" />
+                <button type="submit" name="review_status" value="approved">승인</button>
+                <button type="submit" name="review_status" value="rejected">반려</button>
+              </form>
+            """
         row = f"""
           <tr>
             <td>{created}</td>
@@ -591,15 +602,7 @@ def _render_admin_page(
             <td>{summary}</td>
             <td>{insights_html}</td>
             <td>{files_html}</td>
-            <td>
-              <form method="post" action="/admin/review/{item['id']}?{filter_query}">
-                <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
-                <input type="text" name="reviewer" placeholder="검토자" />
-                <input type="text" name="review_notes" value="{review_notes}" placeholder="메모" />
-                <button type="submit" name="review_status" value="approved">승인</button>
-                <button type="submit" name="review_status" value="rejected">반려</button>
-              </form>
-            </td>
+            <td>{action_html}</td>
           </tr>
         """
         rows.append(row)
