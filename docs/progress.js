@@ -1,5 +1,6 @@
 const DEFAULT_DATA_URL = "./data/progress.json";
 const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
+const DEFAULT_API_URL = `${DEFAULT_API_BASE}/api/v1/progress`;
 
 function normalizeBaseUrl(url) {
   return (url || "").trim().replace(/\/+$/, "");
@@ -211,6 +212,10 @@ async function loadProgress() {
         return res.json();
       })
       .catch(async () => {
+        if (DATA_URL !== DEFAULT_API_URL) {
+          const res = await fetch(DEFAULT_API_URL, { cache: "no-store" });
+          if (res.ok) return res.json();
+        }
         if (DATA_URL === DEFAULT_DATA_URL) throw new Error("progress fallback failed");
         usedFallback = true;
         const res = await fetch(DEFAULT_DATA_URL, { cache: "no-store" });
