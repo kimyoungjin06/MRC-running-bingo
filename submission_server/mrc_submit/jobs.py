@@ -232,9 +232,9 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
             SELECT
               id, created_at, player_name, tier, resolved_codes_json,
               token_event, token_hold, seal_target, seal_type, log_summary,
-              review_status
+              review_status, review_cards_json
             FROM submissions
-            WHERE review_status = 'approved'
+            WHERE review_status IN ('approved', 'pending')
             ORDER BY created_at ASC
             """
         ).fetchall()
@@ -263,6 +263,15 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                 player["last_update"] = created_at
 
             codes = json.loads(row["resolved_codes_json"] or "[]")
+            try:
+                review_cards = json.loads(row["review_cards_json"] or "{}")
+            except json.JSONDecodeError:
+                review_cards = {}
+            if review_cards:
+                approved_codes = [code for code, status in review_cards.items() if status == "approved"]
+                codes = approved_codes
+            elif row["review_status"] != "approved":
+                codes = []
             board_codes = board_codes_by_name.get(name)
             if board_codes:
                 codes = [c for c in codes if c in board_codes]

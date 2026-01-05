@@ -210,6 +210,7 @@ class Storage:
                   reviewed_at TEXT,
                   reviewed_by TEXT,
                   review_notes TEXT,
+                  review_cards_json TEXT,
                   files_json TEXT NOT NULL,
                   user_agent TEXT,
                   client_ip TEXT
@@ -228,6 +229,7 @@ class Storage:
                     "reviewed_at": "TEXT",
                     "reviewed_by": "TEXT",
                     "review_notes": "TEXT",
+                    "review_cards_json": "TEXT",
                 },
             )
             con.commit()
@@ -281,6 +283,7 @@ class Storage:
         reviewed_at: str | None = None,
         reviewed_by: str | None = None,
         review_notes: str | None = None,
+        review_cards: dict[str, str] | None = None,
         files: list[StoredFile],
         user_agent: str | None,
         client_ip: str | None,
@@ -293,7 +296,7 @@ class Storage:
                   id, created_at, player_name, tier, run_date, start_time, distance_km, duration_min,
                   claimed_labels_json, resolved_codes_json, validation_json, notes,
                   token_event, token_hold, seal_target, seal_type, log_summary,
-                  review_status, reviewed_at, reviewed_by, review_notes,
+                  review_status, reviewed_at, reviewed_by, review_notes, review_cards_json,
                   files_json, user_agent, client_ip
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -319,6 +322,7 @@ class Storage:
                     reviewed_at,
                     reviewed_by,
                     review_notes,
+                    json.dumps(review_cards or {}, ensure_ascii=False),
                     json.dumps([f.__dict__ for f in files], ensure_ascii=False),
                     user_agent,
                     client_ip,
@@ -347,7 +351,7 @@ class Storage:
                   distance_km, duration_min,
                   claimed_labels_json, resolved_codes_json, validation_json, notes,
                   token_event, token_hold, seal_target, seal_type, log_summary,
-                  review_status, reviewed_at, reviewed_by, review_notes,
+                  review_status, reviewed_at, reviewed_by, review_notes, review_cards_json,
                   files_json
                 FROM submissions
                 {where}
@@ -362,6 +366,10 @@ class Storage:
                     files = json.loads(row["files_json"] or "[]")
                 except json.JSONDecodeError:
                     files = []
+                try:
+                    review_cards = json.loads(row["review_cards_json"] or "{}")
+                except json.JSONDecodeError:
+                    review_cards = {}
                 items.append(
                     {
                         "id": row["id"],
@@ -385,6 +393,7 @@ class Storage:
                         "reviewed_at": row["reviewed_at"],
                         "reviewed_by": row["reviewed_by"],
                         "review_notes": row["review_notes"],
+                        "review_cards": review_cards,
                         "files": files,
                     }
                 )
@@ -410,6 +419,58 @@ class Storage:
                 WHERE id = ?
                 """,
                 (status, reviewed_at, reviewed_by, review_notes, submission_id),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def update_card_review_status(
+        self,
+        *,
+        submission_id: str,
+        card_code: str,
+        status: str,
+        reviewed_at: str,
+        reviewed_by: str | None,
+        review_notes: str | None,
+    ) -> None:
+        con = sqlite3.connect(self.db_path)
+        con.row_factory = sqlite3.Row
+        try:
+            row = con.execute(
+                "SELECT review_cards_json FROM submissions WHERE id = ?",
+                (submission_id,),
+            ).fetchone()
+            if not row:
+                return
+            try:
+                review_cards = json.loads(row["review_cards_json"] or "{}")
+            except json.JSONDecodeError:
+                review_cards = {}
+            review_cards[card_code] = status
+
+            values = list(review_cards.values())
+            if any(v == "pending" for v in values):
+                overall = "pending"
+            elif any(v == "approved" for v in values):
+                overall = "approved"
+            else:
+                overall = "rejected"
+
+            con.execute(
+                """
+                UPDATE submissions
+                SET review_cards_json = ?, review_status = ?, reviewed_at = ?, reviewed_by = ?, review_notes = ?
+                WHERE id = ?
+                """,
+                (
+                    json.dumps(review_cards, ensure_ascii=False),
+                    overall,
+                    reviewed_at,
+                    reviewed_by,
+                    review_notes,
+                    submission_id,
+                ),
             )
             con.commit()
         finally:

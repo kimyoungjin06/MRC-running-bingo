@@ -229,6 +229,7 @@ def _format_card_list(
     card_titles: dict[str, str],
     *,
     fallback_codes: list[str] | None = None,
+    review_cards: dict[str, str] | None = None,
 ) -> str:
     cards = validation.get("cards") if isinstance(validation, dict) else validation
     if not cards:
@@ -238,7 +239,13 @@ def _format_card_list(
         for code in fallback_codes:
             title = card_titles.get(code, "")
             title_html = f' <span class="card-title">{html.escape(title)}</span>' if title else ""
-            items.append(f"<li><span class=\"card-code\">{html.escape(code)}</span>{title_html}</li>")
+            review_status = (review_cards or {}).get(code)
+            review_html = (
+                f' <span class="card-status card-status--review-{html.escape(review_status)}">{html.escape(_card_review_label(review_status))}</span>'
+                if review_status
+                else ""
+            )
+            items.append(f"<li><span class=\"card-code\">{html.escape(code)}</span>{title_html}{review_html}</li>")
         return f"<ul class=\"card-list\">{''.join(items)}</ul>"
 
     items = []
@@ -248,13 +255,21 @@ def _format_card_list(
         title = card_titles.get(resolved) or card_titles.get(label) or ""
         status = item.get("status")
         status_text = _card_status_label(status)
+        review_status = (review_cards or {}).get(resolved) or (review_cards or {}).get(label)
+        review_html = (
+            f' <span class="card-status card-status--review-{html.escape(review_status)}">{html.escape(_card_review_label(review_status))}</span>'
+            if review_status
+            else ""
+        )
         status_html = (
             f' <span class="card-status card-status--{html.escape(status)}">{html.escape(status_text)}</span>'
             if status
             else ""
         )
         title_html = f' <span class="card-title">{html.escape(title)}</span>' if title else ""
-        items.append(f"<li><span class=\"card-code\">{html.escape(label)}</span>{title_html}{status_html}</li>")
+        items.append(
+            f"<li><span class=\"card-code\">{html.escape(label)}</span>{title_html}{status_html}{review_html}</li>"
+        )
     return f"<ul class=\"card-list\">{''.join(items)}</ul>"
 
 
@@ -332,6 +347,17 @@ def _card_status_label(value: str | None) -> str:
         "passed": "통과",
         "failed": "실패",
         "needs_review": "확인 필요",
+    }
+    if not value:
+        return "-"
+    return mapping.get(value, value)
+
+
+def _card_review_label(value: str | None) -> str:
+    mapping = {
+        "approved": "승인",
+        "rejected": "반려",
+        "pending": "대기",
     }
     if not value:
         return "-"
@@ -568,10 +594,12 @@ def _render_admin_page(
         run_date = _format_run_date(item.get("run_date"))
         summary = _validation_summary(item.get("validation") or {})
         review_notes = item.get("review_notes") or ""
+        review_cards = item.get("review_cards") or {}
         cards_html = _format_card_list(
             item.get("validation") or {},
             card_titles,
             fallback_codes=item.get("resolved_codes") or [],
+            review_cards=review_cards,
         )
         files = item.get("files") or []
         file_count = len(files)
@@ -581,17 +609,63 @@ def _render_admin_page(
         else:
             files_html = "-"
         insights_html = _build_insights(item, by_date=by_date, by_player=by_player)
-        action_html = "-"
-        if item.get("status") == "pending":
-            action_html = f"""
-              <form method="post" action="/admin/review/{item['id']}?{filter_query}">
-                <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
-                <input type="text" name="reviewer" placeholder="검토자" />
-                <input type="text" name="review_notes" value="{review_notes}" placeholder="메모" />
-                <button type="submit" name="review_status" value="approved">승인</button>
-                <button type="submit" name="review_status" value="rejected">반려</button>
-              </form>
-            """
+        action_parts = []
+        validation_cards = (item.get("validation") or {}).get("cards") if isinstance(item.get("validation"), dict) else None
+        if validation_cards:
+            for card in validation_cards:
+                code = card.get("resolved_code") or card.get("label") or "-"
+                label = card.get("label") or code
+                status = review_cards.get(code) or review_cards.get(label)
+                if not status:
+                    if not review_cards and item.get("status") in ("approved", "rejected"):
+                        status = item.get("status")
+                    else:
+                        status = "pending"
+                status_label = _card_review_label(status)
+                status_html = (
+                    f'<span class="card-status card-status--review-{html.escape(status)}">{html.escape(status_label)}</span>'
+                )
+                if status == "pending":
+                    form_html = f"""
+                      <form method="post" action="/admin/review/{item['id']}?{filter_query}">
+                        <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
+                        <input type="hidden" name="card_code" value="{html.escape(code)}" />
+                        <button type="submit" name="review_status" value="approved">승인</button>
+                        <button type="submit" name="review_status" value="rejected">반려</button>
+                      </form>
+                    """
+                else:
+                    form_html = ""
+                action_parts.append(
+                    f'<div><span class="card-code">{html.escape(label)}</span> {status_html}{form_html}</div>'
+                )
+        else:
+            for code in item.get("resolved_codes") or []:
+                status = review_cards.get(code)
+                if not status:
+                    if not review_cards and item.get("status") in ("approved", "rejected"):
+                        status = item.get("status")
+                    else:
+                        status = "pending"
+                status_label = _card_review_label(status)
+                status_html = (
+                    f'<span class="card-status card-status--review-{html.escape(status)}">{html.escape(status_label)}</span>'
+                )
+                if status == "pending":
+                    form_html = f"""
+                      <form method="post" action="/admin/review/{item['id']}?{filter_query}">
+                        <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
+                        <input type="hidden" name="card_code" value="{html.escape(code)}" />
+                        <button type="submit" name="review_status" value="approved">승인</button>
+                        <button type="submit" name="review_status" value="rejected">반려</button>
+                      </form>
+                    """
+                else:
+                    form_html = ""
+                action_parts.append(
+                    f'<div><span class="card-code">{html.escape(code)}</span> {status_html}{form_html}</div>'
+                )
+        action_html = "\n".join(action_parts) if action_parts else "-"
         row = f"""
           <tr>
             <td>{created}</td>
@@ -637,6 +711,9 @@ def _render_admin_page(
     .card-status--failed {{ background: #fee2e2; }}
     .card-status--needs_review {{ background: #fef3c7; }}
     .card-status--passed {{ background: #dcfce7; }}
+    .card-status--review-approved {{ background: #dcfce7; }}
+    .card-status--review-rejected {{ background: #fee2e2; }}
+    .card-status--review-pending {{ background: #fef3c7; }}
     .btn-link {{ display: inline-block; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 8px; text-decoration: none; color: #111827; background: #ffffff; }}
     .insights {{ margin: 0; padding-left: 16px; color: #374151; }}
     .insights li {{ margin-bottom: 4px; }}
@@ -1119,6 +1196,16 @@ def create_app() -> FastAPI:
             "needs_review": sum(1 for v in validations if v["status"] == "needs_review"),
         }
 
+        review_cards: dict[str, str] = {}
+        for card in validations:
+            code = card.get("resolved_code") or card.get("label")
+            if not code:
+                continue
+            if card.get("status") == "failed":
+                review_cards[code] = "rejected"
+            else:
+                review_cards[code] = "pending"
+
         submission_id = new_submission_id()
         submission_dir = storage.create_submission_dir(submission_id)
 
@@ -1145,11 +1232,11 @@ def create_app() -> FastAPI:
         reviewed_at = None
         reviewed_by = None
         review_notes = None
-        if summary["needs_review"] == 0 and summary["failed"] > 0:
+        if review_cards and all(status == "rejected" for status in review_cards.values()):
             review_status = "rejected"
             reviewed_at = created_at
             reviewed_by = "auto"
-            review_notes = "자동 반려: 자동 판정 실패"
+            review_notes = "자동 반려: 카드 전부 실패"
 
         meta = {
             "id": submission_id,
@@ -1214,6 +1301,7 @@ def create_app() -> FastAPI:
             reviewed_at=reviewed_at,
             reviewed_by=reviewed_by,
             review_notes=review_notes,
+            review_cards=review_cards,
             files=stored_files,
             user_agent=request.headers.get("user-agent"),
             client_ip=_client_ip(request),
@@ -1356,16 +1444,28 @@ def create_app() -> FastAPI:
         status = (form.get("review_status") or "").strip().lower()
         if status not in ("approved", "rejected", "pending"):
             raise HTTPException(status_code=400, detail="review_status invalid")
+        card_code = (form.get("card_code") or "").strip() or None
         reviewer = str(form.get("reviewer") or "").strip() or None
         notes = str(form.get("review_notes") or "").strip() or None
-        storage.update_review_status(
-            submission_id=submission_id,
-            status=status,
-            reviewed_at=utc_now_iso(),
-            reviewed_by=reviewer,
-            review_notes=notes,
-        )
-        message = "리뷰 업데이트 완료"
+        if card_code:
+            storage.update_card_review_status(
+                submission_id=submission_id,
+                card_code=card_code,
+                status=status,
+                reviewed_at=utc_now_iso(),
+                reviewed_by=reviewer,
+                review_notes=notes,
+            )
+            message = f"카드 리뷰 업데이트 완료 ({card_code})"
+        else:
+            storage.update_review_status(
+                submission_id=submission_id,
+                status=status,
+                reviewed_at=utc_now_iso(),
+                reviewed_by=reviewer,
+                review_notes=notes,
+            )
+            message = "리뷰 업데이트 완료"
         if _parse_bool(os.getenv("MRC_ADMIN_AUTO_PUBLISH")):
             _, publish_message = _run_publish_now(settings.storage_dir)
             message = f"{message} · {publish_message}"
