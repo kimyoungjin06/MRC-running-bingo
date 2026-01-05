@@ -2,7 +2,6 @@ const STORAGE_KEYS = {
   apiBase: "mrc_submit_api_base",
   submitKey: "mrc_submit_key",
   playerName: "mrc_submit_player_name",
-  tier: "mrc_submit_tier",
 };
 const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
 const DEFAULT_BOARDS_URL = "./data/boards.json";
@@ -243,13 +242,11 @@ function loadConn() {
   $("apiBase").value = storedBase === null ? DEFAULT_API_BASE : storedBase;
   $("submitKey").value = localStorage.getItem(STORAGE_KEYS.submitKey) || "";
   $("playerName").value = localStorage.getItem(STORAGE_KEYS.playerName) || "";
-  $("tier").value = localStorage.getItem(STORAGE_KEYS.tier) || "beginner";
   updateAdminLink();
 }
 
 function savePlayerFields() {
   localStorage.setItem(STORAGE_KEYS.playerName, $("playerName").value || "");
-  localStorage.setItem(STORAGE_KEYS.tier, $("tier").value || "beginner");
 }
 
 function renderRulePreview() {
@@ -614,7 +611,6 @@ function init() {
   $("submitForm").addEventListener("submit", handleSubmit);
   $("playerName").addEventListener("input", savePlayerFields);
   $("playerName").addEventListener("change", loadBoardPreview);
-  $("tier").addEventListener("change", savePlayerFields);
   $("tokenEvent").addEventListener("change", updateTokenFields);
   $("loadBoardBtn").addEventListener("click", loadBoardPreview);
   document.querySelectorAll(".claim-input").forEach((el) => el.addEventListener("input", renderRulePreview));

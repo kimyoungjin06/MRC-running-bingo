@@ -124,6 +124,35 @@ def _load_board_codes(storage_dir: Path, *, carddeck_path: Path, seed: str, map_
     return result
 
 
+def _normalize_tier_label(value: str) -> str | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    lowered = raw.lower()
+    if lowered in ("beginner", "intermediate", "advanced"):
+        return lowered
+    mapping = {"초보": "beginner", "중수": "intermediate", "고수": "advanced"}
+    return mapping.get(raw)
+
+
+def _load_tier_from_boards(storage_dir: Path, player_name: str) -> str | None:
+    env_path = os.getenv("MRC_BOARDS_PATH")
+    boards_path = Path(env_path) if env_path else storage_dir / "boards" / "boards.json"
+    if not boards_path.exists():
+        return None
+    try:
+        data = json.loads(boards_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    for board in data.get("boards", []) if isinstance(data, dict) else []:
+        if (board or {}).get("name") != player_name:
+            continue
+        tier = _normalize_tier_label((board or {}).get("tier") or (board or {}).get("tier_label") or "")
+        if tier:
+            return tier
+    return None
+
+
 def _admin_key_from(request: Request, form: dict | None = None) -> str:
     if "x-mrc-admin-key" in request.headers:
         return request.headers.get("x-mrc-admin-key") or ""
@@ -960,10 +989,19 @@ def create_app() -> FastAPI:
         if not player_name:
             raise HTTPException(status_code=400, detail="이름(player_name)을 입력하세요.")
 
-        try:
-            tier = normalize_tier(str(form.get("tier") or ""))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="티어(tier)가 올바르지 않습니다. beginner/intermediate/advanced")
+        tier_raw = str(form.get("tier") or "").strip()
+        if tier_raw:
+            try:
+                tier = normalize_tier(tier_raw)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="티어(tier)가 올바르지 않습니다. beginner/intermediate/advanced")
+        else:
+            tier = _load_tier_from_boards(settings.storage_dir, player_name)
+            if not tier:
+                raise HTTPException(
+                    status_code=400,
+                    detail="티어가 없습니다. 빙고판 제출의 '내 티어'를 확인하거나 운영진에 문의하세요.",
+                )
 
         seed = (os.getenv("MRC_SEED", DEFAULT_SEED) or DEFAULT_SEED).strip() or DEFAULT_SEED
         map_labels = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
