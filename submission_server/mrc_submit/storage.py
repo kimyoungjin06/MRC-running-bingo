@@ -298,7 +298,7 @@ class Storage:
                   token_event, token_hold, seal_target, seal_type, log_summary,
                   review_status, reviewed_at, reviewed_by, review_notes, review_cards_json,
                   files_json, user_agent, client_ip
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     submission_id,
