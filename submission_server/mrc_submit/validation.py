@@ -82,6 +82,17 @@ def _check_bool(value: bool, *, label: str) -> tuple[ValidationStatus, list[str]
     return "failed", [f"{label} 미충족"]
 
 
+def _check_pace(run: RunPayload) -> tuple[ValidationStatus, list[str]]:
+    if run.distance_km is None or run.duration_min is None:
+        return "needs_review", ["페이스 계산 불가(거리/시간 입력 필요)"]
+    if run.distance_km <= 0:
+        return "failed", ["거리(km) 값이 올바르지 않습니다."]
+    pace = run.duration_min / run.distance_km
+    if pace <= 7.0:
+        return "passed", []
+    return "failed", [f"페이스 느림: {pace:.2f}분/km > 7.00분/km"]
+
+
 def _merge_status(*statuses: ValidationStatus) -> ValidationStatus:
     if "failed" in statuses:
         return "failed"
@@ -113,8 +124,14 @@ def _check_base_run(run: RunPayload) -> tuple[ValidationStatus, list[str]]:
         tier_value(run.tier, 30.0, 40.0, 50.0),
         label="시간(분)",
     )
-    status = _merge_status(distance_status, duration_status)
-    reasons = _merge_reasons(distance_reasons, duration_reasons)
+    pace_status, pace_reasons = _check_pace(run)
+    if pace_status == "failed":
+        status = "failed"
+    elif pace_status == "needs_review":
+        status = "needs_review"
+    else:
+        status = "passed" if (distance_status == "passed" or duration_status == "passed") else "failed"
+    reasons = _merge_reasons(distance_reasons, duration_reasons, pace_reasons)
     return status, reasons
 
 
