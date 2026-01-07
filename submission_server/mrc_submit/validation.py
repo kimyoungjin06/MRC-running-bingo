@@ -39,6 +39,8 @@ class RunPayload:
     did_log: bool
     is_new_route: bool
     is_build_up: bool
+    is_pacing: bool
+    is_level_mix: bool
 
     is_group: bool
     group_size: int | None
@@ -93,6 +95,12 @@ def _check_pace(run: RunPayload) -> tuple[ValidationStatus, list[str]]:
     return "failed", [f"페이스 느림: {pace:.2f}분/km > 7.00분/km"]
 
 
+def _has_lower_tier(run: RunPayload) -> bool:
+    if not run.group_tiers:
+        return False
+    return any(t in ("beginner", "intermediate") for t in run.group_tiers)
+
+
 def _merge_status(*statuses: ValidationStatus) -> ValidationStatus:
     if "failed" in statuses:
         return "failed"
@@ -125,6 +133,11 @@ def _check_base_run(run: RunPayload) -> tuple[ValidationStatus, list[str]]:
         label="시간(분)",
     )
     pace_status, pace_reasons = _check_pace(run)
+    if run.tier == "advanced" and (run.is_pacing or run.is_level_mix):
+        if _has_lower_tier(run):
+            return "passed", ["예외 인정: 하위 티어 동행(페이싱/레벨믹스)"]
+        return "failed", ["하위 티어 동행 정보 필요(그룹 티어 입력)"]
+
     if pace_status == "failed":
         status = "failed"
     elif pace_status == "needs_review":

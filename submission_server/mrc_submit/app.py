@@ -1164,6 +1164,8 @@ def create_app() -> FastAPI:
             did_log=_parse_bool(form.get("did_log")),
             is_new_route=_parse_bool(form.get("is_new_route")),
             is_build_up=_parse_bool(form.get("is_build_up")),
+            is_pacing=_parse_bool(form.get("is_pacing")),
+            is_level_mix=_parse_bool(form.get("is_level_mix")),
             is_group=_parse_bool(form.get("is_group")),
             group_size=_parse_int(form.get("group_size")),
             group_tiers=group_tiers,
