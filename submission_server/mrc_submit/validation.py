@@ -98,7 +98,11 @@ def _check_pace(run: RunPayload) -> tuple[ValidationStatus, list[str]]:
 def _has_lower_tier(run: RunPayload) -> bool:
     if not run.group_tiers:
         return False
-    return any(t in ("beginner", "intermediate") for t in run.group_tiers)
+    if run.tier == "advanced":
+        return any(t in ("beginner", "intermediate") for t in run.group_tiers)
+    if run.tier == "intermediate":
+        return any(t == "beginner" for t in run.group_tiers)
+    return False
 
 
 def _merge_status(*statuses: ValidationStatus) -> ValidationStatus:
@@ -133,7 +137,7 @@ def _check_base_run(run: RunPayload) -> tuple[ValidationStatus, list[str]]:
         label="시간(분)",
     )
     pace_status, pace_reasons = _check_pace(run)
-    if run.tier == "advanced" and (run.is_pacing or run.is_level_mix):
+    if run.tier in ("advanced", "intermediate") and (run.is_pacing or run.is_level_mix):
         if _has_lower_tier(run):
             return "passed", ["예외 인정: 하위 티어 동행(페이싱/레벨믹스)"]
         return "failed", ["하위 티어 동행 정보 필요(그룹 티어 입력)"]
