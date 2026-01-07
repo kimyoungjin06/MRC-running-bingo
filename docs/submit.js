@@ -518,7 +518,7 @@ async function handleSubmit(evt) {
   const labels = collectClaimLabels();
   const { warnings } = previewRules(labels);
   if (warnings.length > 0) {
-    setMessage($("submitMessage"), warnings.join(" "), "error");
+    setMessage($("submitMessage"), warnings.join(" ") + " (자동 판정은 참고용)", "error");
     return;
   }
 
@@ -573,7 +573,7 @@ async function handleSubmit(evt) {
     }
 
     $("submitStatus").textContent = `완료 · ID ${json.id}`;
-    setMessage($("submitMessage"), "제출이 저장되었습니다. 아래 자동 판정 결과를 확인하세요.", "success");
+    setMessage($("submitMessage"), "제출이 저장되었습니다. 자동 판정은 참고용이며 운영진 확인 후 확정됩니다.", "success");
     renderResult(json);
   } catch (err) {
     $("submitStatus").textContent = "실패";

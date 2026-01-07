@@ -703,6 +703,7 @@ def _render_admin_page(
     .meta {{ display: grid; gap: 6px; margin-top: 6px; color: #374151; }}
     .message {{ color: #0a6; }}
     .hint {{ margin: 6px 0 0; font-size: 12px; color: #6b7280; }}
+    .notice {{ margin-top: 8px; font-size: 12px; color: #b91c1c; }}
     .card-list {{ margin: 0; padding-left: 16px; }}
     .card-list li {{ margin-bottom: 4px; }}
     .card-code {{ font-weight: 700; }}
@@ -744,6 +745,7 @@ def _render_admin_page(
         <div>빙고판: {boards_meta}</div>
         <div>제출자(현재 목록): {submitters_html}</div>
         <div class="message">{message}</div>
+        <div class="notice">자동 판정은 참고용입니다. 최종 확정은 운영진 확인 후 반영됩니다.</div>
       </div>
     </div>
     <div class="header-actions">
@@ -1234,11 +1236,6 @@ def create_app() -> FastAPI:
         reviewed_at = None
         reviewed_by = None
         review_notes = None
-        if review_cards and all(status == "rejected" for status in review_cards.values()):
-            review_status = "rejected"
-            reviewed_at = created_at
-            reviewed_by = "auto"
-            review_notes = "자동 반려: 카드 전부 실패"
 
         meta = {
             "id": submission_id,
