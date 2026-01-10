@@ -392,6 +392,20 @@ def _format_run_date(value: str | None) -> str:
     return f"{run_date.isoformat()} ({weekday})"
 
 
+def _effective_run_day(run_date: date | None, created_at: str) -> str:
+    if run_date:
+        return run_date.isoformat()
+    try:
+        dt = datetime.fromisoformat(created_at)
+    except ValueError:
+        return ""
+    tz_name = os.getenv("MRC_JOB_TIMEZONE", "Asia/Seoul")
+    tz = ZoneInfo(tz_name)
+    if dt.tzinfo:
+        dt = dt.astimezone(tz)
+    return dt.date().isoformat()
+
+
 def _format_boards_meta(meta: dict | None, fallback_name: str) -> str:
     if not meta:
         return "없음"
@@ -1302,6 +1316,14 @@ def create_app() -> FastAPI:
             user_agent=request.headers.get("user-agent"),
             client_ip=_client_ip(request),
         )
+        run_day = _effective_run_day(payload.run_date, created_at)
+        if run_day:
+            storage.reject_previous_submissions(
+                player_name=player_name,
+                keep_id=submission_id,
+                run_day=run_day,
+                reviewed_at=created_at,
+            )
 
         return {
             "id": submission_id,

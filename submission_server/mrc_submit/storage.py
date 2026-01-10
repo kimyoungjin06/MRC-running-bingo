@@ -6,6 +6,7 @@ import secrets
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 
@@ -473,5 +474,71 @@ class Storage:
                 ),
             )
             con.commit()
+        finally:
+            con.close()
+
+    def reject_previous_submissions(
+        self,
+        *,
+        player_name: str,
+        keep_id: str,
+        run_day: str,
+        reviewed_at: str,
+    ) -> int:
+        con = sqlite3.connect(self.db_path)
+        con.row_factory = sqlite3.Row
+        try:
+            rows = con.execute(
+                """
+                SELECT id, created_at, run_date, resolved_codes_json, review_cards_json
+                FROM submissions
+                WHERE player_name = ? AND id != ?
+                """,
+                (player_name, keep_id),
+            ).fetchall()
+            if not rows:
+                return 0
+
+            tz = ZoneInfo("Asia/Seoul")
+            rejected = 0
+            for row in rows:
+                effective_day = row["run_date"]
+                if not effective_day:
+                    try:
+                        dt = datetime.fromisoformat(row["created_at"])
+                        if dt.tzinfo:
+                            dt = dt.astimezone(tz)
+                        effective_day = dt.date().isoformat()
+                    except ValueError:
+                        effective_day = None
+                if effective_day != run_day:
+                    continue
+
+                try:
+                    codes = json.loads(row["resolved_codes_json"] or "[]")
+                except json.JSONDecodeError:
+                    codes = []
+                review_cards = {}
+                for code in codes:
+                    review_cards[code] = "rejected"
+
+                con.execute(
+                    """
+                    UPDATE submissions
+                    SET review_status = ?, reviewed_at = ?, reviewed_by = ?, review_notes = ?, review_cards_json = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        "rejected",
+                        reviewed_at,
+                        "auto",
+                        "자동 반려: 같은 날 최신 제출만 인정",
+                        json.dumps(review_cards, ensure_ascii=False),
+                        row["id"],
+                    ),
+                )
+                rejected += 1
+            con.commit()
+            return rejected
         finally:
             con.close()
