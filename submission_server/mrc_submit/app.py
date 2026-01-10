@@ -1205,10 +1205,7 @@ def create_app() -> FastAPI:
             code = card.get("resolved_code") or card.get("label")
             if not code:
                 continue
-            if card.get("status") == "failed":
-                review_cards[code] = "rejected"
-            else:
-                review_cards[code] = "pending"
+            review_cards[code] = "pending"
 
         submission_id = new_submission_id()
         submission_dir = storage.create_submission_dir(submission_id)
