@@ -1181,7 +1181,22 @@ def create_app() -> FastAPI:
             )
 
         group_tiers_raw = _split_csvish([str(v) for v in form.getlist("group_tiers")])
-        group_tiers = tuple(normalize_tier(t.strip()) for t in group_tiers_raw if t.strip()) or None
+        group_tiers_list = []
+        invalid_group_tiers = []
+        for raw in group_tiers_raw:
+            cleaned = raw.strip()
+            if not cleaned:
+                continue
+            try:
+                group_tiers_list.append(normalize_tier(cleaned))
+            except ValueError:
+                invalid_group_tiers.append(cleaned)
+        if invalid_group_tiers:
+            raise HTTPException(
+                status_code=400,
+                detail={"messages": [f"그룹 티어 값이 올바르지 않습니다: {', '.join(invalid_group_tiers)}"]},
+            )
+        group_tiers = tuple(group_tiers_list) or None
 
         payload = RunPayload(
             tier=tier,
