@@ -97,6 +97,48 @@ async function loadJsonWithFallback(primaryUrl, fallbackUrl) {
   }
 }
 
+const TIER_ALIASES = {
+  beginner: "beginner",
+  beg: "beginner",
+  b: "beginner",
+  "초보": "beginner",
+  intermediate: "intermediate",
+  inter: "intermediate",
+  i: "intermediate",
+  "중수": "intermediate",
+  advanced: "advanced",
+  adv: "advanced",
+  a: "advanced",
+  "고수": "advanced",
+};
+let tierIndexPromise = null;
+
+function normalizeTierLabel(value) {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  if (TIER_ALIASES[raw]) return TIER_ALIASES[raw];
+  const lower = raw.toLowerCase();
+  return TIER_ALIASES[lower] || "";
+}
+
+async function loadTierIndex() {
+  if (tierIndexPromise) return tierIndexPromise;
+  tierIndexPromise = (async () => {
+    const boardsUrl = getBoardsUrl();
+    const fallbackBoards = boardsUrl !== DEFAULT_BOARDS_URL ? DEFAULT_BOARDS_URL : boardsUrl;
+    const result = await loadJsonWithFallback(boardsUrl, fallbackBoards);
+    const boards = Array.isArray(result.data?.boards) ? result.data.boards : [];
+    const map = new Map();
+    boards.forEach((board) => {
+      const name = (board?.name || "").trim();
+      const tier = normalizeTierLabel(board?.tier || board?.tier_label || "");
+      if (name && tier) map.set(name, tier);
+    });
+    return map;
+  })();
+  return tierIndexPromise;
+}
+
 function createBoardCell(cell, isChecked) {
   const div = document.createElement("div");
   div.className = "board-cell board-cell--static";
@@ -540,6 +582,7 @@ async function handleSubmit(evt) {
 
   // normalize group_tiers: turn comma text into repeated fields
   const groupTiersText = ($("groupTiers").value || "").trim();
+  const groupNamesText = ($("groupNames")?.value || "").trim();
   if (groupTiersText) {
     fd.delete("group_tiers");
     groupTiersText
@@ -547,6 +590,45 @@ async function handleSubmit(evt) {
       .map((t) => t.trim())
       .filter(Boolean)
       .forEach((t) => fd.append("group_tiers", t));
+  } else if (groupNamesText) {
+    const names = groupNamesText
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    if (names.length > 0) {
+      let tierIndex;
+      try {
+        tierIndex = await loadTierIndex();
+      } catch (err) {
+        setMessage($("submitMessage"), err?.message || "티어 정보를 불러오지 못했습니다.", "error");
+        return;
+      }
+      if (!tierIndex || tierIndex.size === 0) {
+        setMessage($("submitMessage"), "티어 데이터가 없어 이름으로 자동 입력할 수 없습니다.", "error");
+        return;
+      }
+      const tiers = [];
+      const missing = [];
+      names.forEach((name) => {
+        const tier = tierIndex.get(name);
+        if (tier) tiers.push(tier);
+        else missing.push(name);
+      });
+      const selfName = ($("playerName")?.value || "").trim();
+      if (selfName) {
+        const selfTier = tierIndex.get(selfName);
+        if (selfTier) tiers.push(selfTier);
+      }
+      if (missing.length) {
+        setMessage($("submitMessage"), `티어를 찾지 못한 이름: ${missing.join(", ")}`, "error");
+        return;
+      }
+      const uniqueTiers = Array.from(new Set(tiers));
+      if (uniqueTiers.length) {
+        fd.delete("group_tiers");
+        uniqueTiers.forEach((tier) => fd.append("group_tiers", tier));
+      }
+    }
   }
 
   $("submitBtn").disabled = true;
