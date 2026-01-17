@@ -580,17 +580,8 @@ async function handleSubmit(evt) {
   // send key as form field (simple request, no extra preflight)
   if (submitKey) fd.append("submit_key", submitKey);
 
-  // normalize group_tiers: turn comma text into repeated fields
-  const groupTiersText = ($("groupTiers").value || "").trim();
   const groupNamesText = ($("groupNames")?.value || "").trim();
-  if (groupTiersText) {
-    fd.delete("group_tiers");
-    groupTiersText
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean)
-      .forEach((t) => fd.append("group_tiers", t));
-  } else if (groupNamesText) {
+  if (groupNamesText) {
     const names = groupNamesText
       .split(",")
       .map((name) => name.trim())
