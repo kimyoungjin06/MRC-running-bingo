@@ -342,6 +342,19 @@ def _status_label(value: str | None) -> str:
     return mapping.get(value.lower(), value)
 
 
+def _reject_reason(item: dict[str, Any]) -> str:
+    submission_status = item.get("review_status") or "pending"
+    if submission_status != "rejected":
+        return ""
+    review_notes = item.get("review_notes") or ""
+    reviewed_by = (item.get("reviewed_by") or "").strip()
+    if reviewed_by == "auto" and "같은 날 최신 제출만 인정" in review_notes:
+        return "자동 반려(중복 제출)"
+    if reviewed_by == "auto":
+        return "자동 반려"
+    return "운영진 반려"
+
+
 def _card_status_label(value: str | None) -> str:
     mapping = {
         "passed": "통과",
@@ -609,6 +622,8 @@ def _render_admin_page(
         summary = _validation_summary(item.get("validation") or {})
         review_notes = item.get("review_notes") or ""
         review_cards = item.get("review_cards") or {}
+        submission_status = item.get("review_status") or "pending"
+        reject_reason = _reject_reason(item)
         cards_html = _format_card_list(
             item.get("validation") or {},
             card_titles,
@@ -631,8 +646,8 @@ def _render_admin_page(
                 label = card.get("label") or code
                 status = review_cards.get(code) or review_cards.get(label)
                 if not status:
-                    if not review_cards and item.get("status") in ("approved", "rejected"):
-                        status = item.get("status")
+                    if not review_cards and submission_status in ("approved", "rejected"):
+                        status = submission_status
                     else:
                         status = "pending"
                 status_label = _card_review_label(status)
@@ -657,8 +672,8 @@ def _render_admin_page(
             for code in item.get("resolved_codes") or []:
                 status = review_cards.get(code)
                 if not status:
-                    if not review_cards and item.get("status") in ("approved", "rejected"):
-                        status = item.get("status")
+                    if not review_cards and submission_status in ("approved", "rejected"):
+                        status = submission_status
                     else:
                         status = "pending"
                 status_label = _card_review_label(status)
@@ -679,6 +694,8 @@ def _render_admin_page(
                 action_parts.append(
                     f'<div><span class="card-code">{html.escape(code)}</span> {status_html}{form_html}</div>'
                 )
+        if reject_reason:
+            action_parts.insert(0, f'<div class="review-badge review-badge--rejected">{html.escape(reject_reason)}</div>')
         action_html = "\n".join(action_parts) if action_parts else "-"
         row = f"""
           <tr>
@@ -729,6 +746,8 @@ def _render_admin_page(
     .card-status--review-approved {{ background: #dcfce7; }}
     .card-status--review-rejected {{ background: #fee2e2; }}
     .card-status--review-pending {{ background: #fef3c7; }}
+    .review-badge {{ display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }}
+    .review-badge--rejected {{ background: #fee2e2; color: #991b1b; }}
     .btn-link {{ display: inline-block; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 8px; text-decoration: none; color: #111827; background: #ffffff; }}
     .insights {{ margin: 0; padding-left: 16px; color: #374151; }}
     .insights li {{ margin-bottom: 4px; }}
@@ -861,6 +880,12 @@ def _render_admin_submission_page(
     duration = run.get("duration_min")
     distance_text = f"{distance}km" if distance is not None else "-"
     duration_text = f"{duration}분" if duration is not None else "-"
+    reject_reason = _reject_reason(meta)
+    reject_html = (
+        f'<div class="review-badge review-badge--rejected">{html.escape(reject_reason)}</div>'
+        if reject_reason
+        else ""
+    )
     cards_html = _format_card_list(
         meta.get("validation") or [],
         card_titles,
@@ -909,6 +934,8 @@ def _render_admin_submission_page(
     .card-status--failed {{ background: #fee2e2; }}
     .card-status--needs_review {{ background: #fef3c7; }}
     .card-status--passed {{ background: #dcfce7; }}
+    .review-badge {{ display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }}
+    .review-badge--rejected {{ background: #fee2e2; color: #991b1b; }}
     .files {{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}
     .file-item {{ border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; background: #f9fafb; }}
     .file-item img {{ width: 100%; border-radius: 8px; margin-top: 6px; }}
@@ -928,6 +955,7 @@ def _render_admin_submission_page(
   <div class="meta">
     <div><strong>이름</strong>: {html.escape(str(name))}</div>
     <div><strong>제출 시간</strong>: {html.escape(str(created))}</div>
+    {reject_html}
   </div>
   <div class="chips">
     <span class="chip">티어: {html.escape(str(tier))}</span>

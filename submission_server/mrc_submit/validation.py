@@ -327,13 +327,13 @@ def evaluate_card(card_code: str, run: RunPayload) -> tuple[ValidationStatus, li
         order = {"beginner": 0, "intermediate": 1, "advanced": 2}
         is_pacemaker = order[run.tier] > min(order[t] for t in others)
         return finalize(
-            ("passed", []) if is_pacemaker else ("failed", ["페이스메이킹(나보다 느린 러너) 조건 미달"])
+            *(("passed", []) if is_pacemaker else ("failed", ["페이스메이킹(나보다 느린 러너) 조건 미달"]))
         )
     if c == "C07":
         if run.group_tiers is None or not run.group_tiers:
             return finalize("needs_review", ["그룹 티어 정보 입력 필요"])
         return finalize(
-            ("passed", []) if len(set(run.group_tiers)) >= 2 else ("failed", ["서로 다른 티어 2인+ 조건 미달"])
+            *(("passed", []) if len(set(run.group_tiers)) >= 2 else ("failed", ["서로 다른 티어 2인+ 조건 미달"]))
         )
     if c == "C08":
         if run.group_size is None:
