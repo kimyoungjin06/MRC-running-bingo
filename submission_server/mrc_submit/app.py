@@ -1329,6 +1329,13 @@ def create_app() -> FastAPI:
                 raise HTTPException(status_code=400, detail="Seal 타입(B/C)을 선택하세요.")
             if storage.has_pending_or_active_seal(seal_target=seal_target, seal_type=seal_type):
                 raise HTTPException(status_code=400, detail="이미 동일 타입 봉인이 진행 중입니다.")
+        if token_event == "shield":
+            if not seal_type:
+                raise HTTPException(status_code=400, detail="Shield 타입(B/C)을 선택하세요.")
+            if not active_seal_types:
+                raise HTTPException(status_code=400, detail="현재 봉인 상태가 아닙니다.")
+            if seal_type not in active_seal_types:
+                raise HTTPException(status_code=400, detail="해당 타입 봉인이 없습니다.")
         if token_event in ("seal", "shield"):
             available, _, _ = storage.compute_token_balance(player_name=player_name, tier=tier)
             if available <= 0:

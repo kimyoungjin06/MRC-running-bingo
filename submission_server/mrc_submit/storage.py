@@ -477,11 +477,15 @@ class Storage:
                     continue
                 if event == "shield" and row["player_name"] == player_name:
                     if active:
-                        latest_type = max(
-                            active,
-                            key=lambda t: active[t].get("created_at") or "",
-                        )
-                        active.pop(latest_type, None)
+                        shield_type = (row["seal_type"] or "").upper()
+                        if shield_type in active:
+                            active.pop(shield_type, None)
+                        else:
+                            latest_type = max(
+                                active,
+                                key=lambda t: active[t].get("created_at") or "",
+                            )
+                            active.pop(latest_type, None)
                     continue
 
                 if not active:
