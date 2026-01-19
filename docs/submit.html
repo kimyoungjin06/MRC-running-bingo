@@ -96,34 +96,35 @@
               <p class="field__help">티어는 빙고판 제출의 “내 티어” 기준으로 자동 적용됩니다.</p>
             </div>
 
-            <div class="field">
-              <label for="runDate">러닝 날짜</label>
-              <input id="runDate" name="run_date" type="date" />
-              <p class="field__help">주말(B05) 자동 판정에 필요합니다(선택).</p>
-            </div>
+            <div id="runFields">
+              <div class="field">
+                <label for="runDate">러닝 날짜</label>
+                <input id="runDate" name="run_date" type="date" />
+                <p class="field__help">주말(B05) 자동 판정에 필요합니다(선택).</p>
+              </div>
 
-            <div class="field">
-              <label for="startTime">시작 시간</label>
-              <input id="startTime" name="start_time" type="time" />
-              <p class="field__help">야간(B01)/새벽(B02) 자동 판정에 필요합니다(선택).</p>
-            </div>
+              <div class="field">
+                <label for="startTime">시작 시간</label>
+                <input id="startTime" name="start_time" type="time" />
+                <p class="field__help">야간(B01)/새벽(B02) 자동 판정에 필요합니다(선택).</p>
+              </div>
 
-            <div class="field field--inline">
-              <label for="distanceKm">거리(km)</label>
-              <input id="distanceKm" name="distance_km" type="number" inputmode="decimal" step="0.01" placeholder="예: 6.32" />
-            </div>
+              <div class="field field--inline">
+                <label for="distanceKm">거리(km)</label>
+                <input id="distanceKm" name="distance_km" type="number" inputmode="decimal" step="0.01" placeholder="예: 6.32" />
+              </div>
 
-            <div class="field field--inline">
-              <label for="durationMin">시간(분)</label>
-              <input id="durationMin" name="duration_min" type="number" inputmode="numeric" step="1" placeholder="예: 42" />
-            </div>
+              <div class="field field--inline">
+                <label for="durationMin">시간(분)</label>
+                <input id="durationMin" name="duration_min" type="number" inputmode="numeric" step="1" placeholder="예: 42" />
+              </div>
 
-            <div class="field">
-              <p class="field__help">공통 조건: 페이스 7'00/km 이내 + (초보 5km+ 또는 30분+ / 중수 7km+ 또는 40분+ / 고수 10km+ 또는 50분+)</p>
-            </div>
+              <div class="field">
+                <p class="field__help">공통 조건: 페이스 7'00/km 이내 + (초보 5km+ 또는 30분+ / 중수 7km+ 또는 40분+ / 고수 10km+ 또는 50분+)</p>
+              </div>
 
-            <details class="card-details">
-              <summary>선택 입력(자동 판정 정확도↑)</summary>
+              <details class="card-details">
+                <summary>선택 입력(자동 판정 정확도↑)</summary>
               <div class="field">
                 <label for="precipitation">강수</label>
                 <select id="precipitation" name="precipitation" data-custom-select>
@@ -216,7 +217,8 @@
                 <input id="groupNames" type="text" placeholder="예: 김민태, 석쓰리" />
                 <p class="field__help">이름으로 티어를 자동 추정합니다(지원: 초보/중수/고수). C06/C07 판정 및 페이싱/레벨믹스 예외에 사용.</p>
               </div>
-            </details>
+              </details>
+            </div>
 
             <details class="card-details">
               <summary>전략 로그(공격/토큰/최신 기록)</summary>
@@ -295,6 +297,6 @@
       </div>
     </footer>
 
-    <script src="./submit.js?v=20260111-4" defer></script>
+    <script src="./submit.js?v=20260111-5" defer></script>
   </body>
 </html>

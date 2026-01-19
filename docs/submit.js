@@ -311,8 +311,16 @@ function updateTokenFields() {
   const showSeal = eventValue === "seal";
   $("sealTargetField").classList.toggle("is-hidden", !showSeal);
   $("sealTypeField").classList.toggle("is-hidden", !showSeal);
+  const isTokenOnly = eventValue === "seal" || eventValue === "shield";
   const filesInput = $("files");
-  if (filesInput) filesInput.required = !(eventValue === "seal" || eventValue === "shield");
+  if (filesInput) filesInput.required = !isTokenOnly;
+  const runFields = $("runFields");
+  if (runFields) {
+    runFields.classList.toggle("is-hidden", isTokenOnly);
+    runFields.querySelectorAll("input, select, textarea").forEach((el) => {
+      el.disabled = isTokenOnly;
+    });
+  }
   renderRulePreview();
 }
 
