@@ -1072,6 +1072,24 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=500, detail="progress invalid")
         return JSONResponse(content=data)
 
+    @app.get("/api/v1/seal-status")
+    def seal_status(player_name: str) -> JSONResponse:
+        name = (player_name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="player_name required")
+        tz_name = os.getenv("MRC_JOB_TIMEZONE", "Asia/Seoul")
+        status = storage.get_seal_status(player_name=name, tz=ZoneInfo(tz_name))
+        if not status:
+            return JSONResponse(content={"active": False})
+        return JSONResponse(
+            content={
+                "active": True,
+                "type": status.get("type"),
+                "remaining_runs": status.get("remaining_runs"),
+                "run_days": status.get("run_days", []),
+            }
+        )
+
     @app.get("/api/v1/boards")
     def boards() -> JSONResponse:
         env_path = os.getenv("MRC_BOARDS_PATH")
@@ -1257,11 +1275,22 @@ def create_app() -> FastAPI:
             is_easy=_parse_bool(form.get("is_easy")),
         )
 
+        tz_name = os.getenv("MRC_JOB_TIMEZONE", "Asia/Seoul")
+        seal_status = storage.get_seal_status(player_name=player_name, tz=ZoneInfo(tz_name))
+        seal_type = seal_status.get("type") if isinstance(seal_status, dict) else None
+        seal_remaining = seal_status.get("remaining_runs") if isinstance(seal_status, dict) else None
+        seal_blocks = token_event != "shield"
+
         validations: list[dict[str, Any]] = []
         if resolved_codes:
             for label, code in zip(claimed_labels, resolved_codes, strict=False):
-                status, reasons = evaluate_card(code, payload)
                 card = CARDS.get(code)
+                if seal_blocks and seal_type and card and card.card_type == seal_type:
+                    status = "failed"
+                    remaining_text = f"{seal_remaining}회" if seal_remaining is not None else "2회"
+                    reasons = [f"Seal 봉인: {seal_type} 타입은 다음 {remaining_text} 러닝 동안 체크 불가"]
+                else:
+                    status, reasons = evaluate_card(code, payload)
                 validations.append(
                     {
                         "label": label.strip().upper(),

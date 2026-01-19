@@ -445,6 +445,74 @@ class Storage:
         available = max(0, min(cap, earned - used))
         return available, earned, used
 
+    def get_seal_status(self, *, player_name: str, tz: ZoneInfo) -> dict[str, object] | None:
+        con = sqlite3.connect(self.db_path)
+        con.row_factory = sqlite3.Row
+        try:
+            rows = con.execute(
+                """
+                SELECT
+                  created_at, player_name, run_date,
+                  resolved_codes_json, token_event, seal_target, seal_type,
+                  review_status
+                FROM submissions
+                WHERE review_status = 'approved'
+                  AND (player_name = ? OR seal_target = ?)
+                ORDER BY created_at ASC
+                """,
+                (player_name, player_name),
+            ).fetchall()
+
+            active = None
+            for row in rows:
+                event = (row["token_event"] or "").lower()
+                if event == "seal" and row["seal_target"] == player_name:
+                    active = {
+                        "type": (row["seal_type"] or "").upper(),
+                        "created_at": row["created_at"],
+                        "run_days": set(),
+                    }
+                    continue
+                if event == "shield" and row["player_name"] == player_name:
+                    if active:
+                        active = None
+                    continue
+
+                if not active:
+                    continue
+                if row["player_name"] != player_name:
+                    continue
+                try:
+                    codes = json.loads(row["resolved_codes_json"] or "[]")
+                except json.JSONDecodeError:
+                    codes = []
+                if not codes:
+                    continue
+                run_day = row["run_date"]
+                if not run_day:
+                    try:
+                        dt = datetime.fromisoformat(row["created_at"])
+                        if dt.tzinfo:
+                            dt = dt.astimezone(tz)
+                        run_day = dt.date().isoformat()
+                    except ValueError:
+                        run_day = None
+                if run_day:
+                    active["run_days"].add(run_day)
+                if len(active["run_days"]) >= 2:
+                    active = None
+
+            if not active:
+                return None
+            remaining = max(0, 2 - len(active["run_days"]))
+            return {
+                "type": active["type"],
+                "remaining_runs": remaining,
+                "run_days": sorted(active["run_days"]),
+            }
+        finally:
+            con.close()
+
     def update_review_status(
         self,
         *,

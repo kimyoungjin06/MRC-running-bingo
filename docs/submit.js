@@ -292,6 +292,41 @@ function savePlayerFields() {
   localStorage.setItem(STORAGE_KEYS.playerName, $("playerName").value || "");
 }
 
+async function loadSealStatus() {
+  const messageEl = $("sealMessage");
+  if (!messageEl) return;
+  const name = ($("playerName").value || "").trim();
+  if (!name) {
+    setMessage(messageEl, "", "info");
+    return;
+  }
+  const apiBase = normalizeBaseUrl(localStorage.getItem(STORAGE_KEYS.apiBase) || "");
+  if (!apiBase) {
+    setMessage(messageEl, "", "info");
+    return;
+  }
+  try {
+    const res = await fetch(`${apiBase}/api/v1/seal-status?player_name=${encodeURIComponent(name)}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (!data || !data.active) {
+      setMessage(messageEl, "", "info");
+      return;
+    }
+    const typeLabel = data.type === "B" ? "B(Condition)" : "C(Co-op)";
+    const remaining = data.remaining_runs ?? 2;
+    setMessage(
+      messageEl,
+      `현재 ${typeLabel} 봉인 중입니다. 서로 다른 날짜 기준 ${remaining}회 러닝 동안 해당 타입 카드는 체크할 수 없습니다. 방어 토큰(Shield) 제출을 먼저 해주세요.`,
+      "error"
+    );
+  } catch {
+    setMessage(messageEl, "", "info");
+  }
+}
+
 function renderRulePreview() {
   const labels = collectClaimLabels();
   const tokenEvent = ($("tokenEvent")?.value || "").trim();
@@ -714,11 +749,15 @@ function init() {
   loadConn();
   initCustomSelects();
   renderRulePreview();
+  loadSealStatus();
   $("saveConnBtn").addEventListener("click", handleSaveConn);
   $("apiBase").addEventListener("input", updateAdminLink);
   $("submitForm").addEventListener("submit", handleSubmit);
   $("playerName").addEventListener("input", savePlayerFields);
-  $("playerName").addEventListener("change", loadBoardPreview);
+  $("playerName").addEventListener("change", () => {
+    loadBoardPreview();
+    loadSealStatus();
+  });
   $("tokenEvent").addEventListener("change", updateTokenFields);
   $("runFieldsToggle").addEventListener("click", toggleRunFields);
   $("loadBoardBtn").addEventListener("click", loadBoardPreview);
