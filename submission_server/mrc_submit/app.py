@@ -694,6 +694,16 @@ def _render_admin_page(
                 action_parts.append(
                     f'<div><span class="card-code">{html.escape(code)}</span> {status_html}{form_html}</div>'
                 )
+        if not action_parts and submission_status == "pending":
+            action_parts.append(
+                f"""
+                <form method="post" action="/admin/review/{item['id']}?{filter_query}">
+                  <input type="hidden" name="admin_key" value="{html.escape(admin_key)}" />
+                  <button type="submit" name="review_status" value="approved">승인</button>
+                  <button type="submit" name="review_status" value="rejected">반려</button>
+                </form>
+                """
+            )
         if reject_reason:
             action_parts.insert(0, f'<div class="review-badge review-badge--rejected">{html.escape(reject_reason)}</div>')
         action_html = "\n".join(action_parts) if action_parts else "-"
@@ -1131,54 +1141,64 @@ def create_app() -> FastAPI:
         map_labels = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
         carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
 
+        token_event = (str(form.get("token_event") or "").strip().lower() or None)
+        if token_event not in (None, "earned", "seal", "shield"):
+            raise HTTPException(status_code=400, detail="token_event 값이 올바르지 않습니다.")
+
         claimed_raw = [str(v) for v in form.getlist("claimed_labels")]
         claimed_labels = normalize_claim_labels(_split_csvish(claimed_raw))
-        rules_ok, rule_msgs = validate_claim_labels(claimed_labels)
-        if not rules_ok:
-            raise HTTPException(status_code=400, detail={"messages": rule_msgs})
+        if not claimed_labels and not token_event:
+            raise HTTPException(status_code=400, detail="카드 코드(라벨)를 1개 이상 입력하세요.")
 
-        board_codes_map = _load_board_codes(
-            settings.storage_dir,
-            carddeck_path=carddeck_path,
-            seed=seed,
-            map_labels=map_labels,
-        )
-        player_board_codes = board_codes_map.get(player_name)
+        rule_msgs: list[str] = []
+        if claimed_labels:
+            rules_ok, rule_msgs = validate_claim_labels(claimed_labels)
+            if not rules_ok:
+                raise HTTPException(status_code=400, detail={"messages": rule_msgs})
 
-        label_map = build_label_map(seed)
         resolved_codes: list[str] = []
-        invalid_labels: list[str] = []
-        missing_on_board: list[str] = []
+        if claimed_labels:
+            board_codes_map = _load_board_codes(
+                settings.storage_dir,
+                carddeck_path=carddeck_path,
+                seed=seed,
+                map_labels=map_labels,
+            )
+            player_board_codes = board_codes_map.get(player_name)
 
-        for label in claimed_labels:
-            if player_board_codes is not None:
-                if label not in CARDS:
+            label_map = build_label_map(seed)
+            invalid_labels: list[str] = []
+            missing_on_board: list[str] = []
+
+            for label in claimed_labels:
+                if player_board_codes is not None:
+                    if label not in CARDS:
+                        invalid_labels.append(label)
+                        continue
+                    if label not in player_board_codes:
+                        missing_on_board.append(label)
+                        continue
+                    resolved_codes.append(label)
+                    continue
+
+                if label in CARDS:
+                    resolved_codes.append(label)
+                    continue
+                if label not in label_map.by_label:
                     invalid_labels.append(label)
                     continue
-                if label not in player_board_codes:
-                    missing_on_board.append(label)
-                    continue
-                resolved_codes.append(label)
-                continue
+                resolved_codes.append(label_map.by_label[label])
 
-            if label in CARDS:
-                resolved_codes.append(label)
-                continue
-            if label not in label_map.by_label:
-                invalid_labels.append(label)
-                continue
-            resolved_codes.append(label_map.by_label[label])
-
-        if invalid_labels:
-            raise HTTPException(
-                status_code=400,
-                detail={"messages": [f"존재하지 않는 카드 코드: {', '.join(invalid_labels)}"]},
-            )
-        if missing_on_board:
-            raise HTTPException(
-                status_code=400,
-                detail={"messages": [f"빙고판에 없는 카드 코드: {', '.join(missing_on_board)}"]},
-            )
+            if invalid_labels:
+                raise HTTPException(
+                    status_code=400,
+                    detail={"messages": [f"존재하지 않는 카드 코드: {', '.join(invalid_labels)}"]},
+                )
+            if missing_on_board:
+                raise HTTPException(
+                    status_code=400,
+                    detail={"messages": [f"빙고판에 없는 카드 코드: {', '.join(missing_on_board)}"]},
+                )
 
         group_tiers_raw = _split_csvish([str(v) for v in form.getlist("group_tiers")])
         group_tiers_list = []
@@ -1237,19 +1257,20 @@ def create_app() -> FastAPI:
         )
 
         validations: list[dict[str, Any]] = []
-        for label, code in zip(claimed_labels, resolved_codes, strict=False):
-            status, reasons = evaluate_card(code, payload)
-            card = CARDS.get(code)
-            validations.append(
-                {
-                    "label": label.strip().upper(),
-                    "resolved_code": code,
-                    "type": card.card_type if card else None,
-                    "stars": card.stars if card else None,
-                    "status": status,
-                    "reasons": reasons,
-                }
-            )
+        if resolved_codes:
+            for label, code in zip(claimed_labels, resolved_codes, strict=False):
+                status, reasons = evaluate_card(code, payload)
+                card = CARDS.get(code)
+                validations.append(
+                    {
+                        "label": label.strip().upper(),
+                        "resolved_code": code,
+                        "type": card.card_type if card else None,
+                        "stars": card.stars if card else None,
+                        "status": status,
+                        "reasons": reasons,
+                    }
+                )
 
         summary = {
             "passed": sum(1 for v in validations if v["status"] == "passed"),
@@ -1274,12 +1295,14 @@ def create_app() -> FastAPI:
 
         created_at = utc_now_iso()
         notes = str(form.get("notes") or "").strip() or None
-        token_event = (str(form.get("token_event") or "").strip().lower() or None)
-        if token_event not in (None, "earned", "seal", "shield"):
-            raise HTTPException(status_code=400, detail="token_event 값이 올바르지 않습니다.")
-        token_hold = _parse_int(form.get("token_hold"))
-        if token_hold not in (None, 0, 1):
-            raise HTTPException(status_code=400, detail="token_hold 값이 올바르지 않습니다.")
+        if token_event in ("seal", "shield"):
+            available, _, _ = storage.compute_token_balance(player_name=player_name, tier=tier)
+            if available <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="사용 가능한 토큰이 없습니다. W 카드 달성 후 다시 시도하세요.",
+                )
+        token_hold = None
         seal_target = str(form.get("seal_target") or "").strip() or None
         seal_type = (str(form.get("seal_type") or "").strip().upper() or None)
         if seal_type and seal_type not in ("B", "C"):
@@ -1360,7 +1383,7 @@ def create_app() -> FastAPI:
             client_ip=_client_ip(request),
         )
         run_day = _effective_run_day(payload.run_date, created_at)
-        if run_day:
+        if run_day and resolved_codes:
             storage.reject_previous_submissions(
                 player_name=player_name,
                 keep_id=submission_id,

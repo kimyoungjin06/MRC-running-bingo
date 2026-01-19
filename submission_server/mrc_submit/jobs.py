@@ -10,7 +10,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from .boards import load_boards_json
-from .cards import CARDS
+from .cards import CARDS, TIER_ALIASES
 from .llm import preprocess_submission
 from .storage import Storage
 
@@ -63,6 +63,21 @@ def _stable_id(value: str) -> str:
 
     digest = hashlib.sha1(value.encode("utf-8")).hexdigest()
     return digest[:10]
+
+
+def _normalize_tier(value: str | None) -> str | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    if raw in TIER_ALIASES:
+        return TIER_ALIASES[raw]
+    if raw.lower() in TIER_ALIASES:
+        return TIER_ALIASES[raw.lower()]
+    return None
+
+
+def _token_cap(tier: str | None) -> int:
+    return {"beginner": 1, "intermediate": 2, "advanced": 3}.get(tier or "", 1)
 
 
 def _read_boards(boards_path: Path) -> dict[str, Any] | None:
@@ -197,6 +212,7 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
         apply_label_map=map_labels,
     ) or {}
     board_index: dict[str, dict[str, Any]] = {}
+    board_tiers: dict[str, str] = {}
     for board in boards_data.get("boards", []) if isinstance(boards_data, dict) else []:
         if not board:
             continue
@@ -204,6 +220,9 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
         if not name:
             continue
         board_index[name] = board
+        board_tier = _normalize_tier(board.get("tier") or board.get("tier_label"))
+        if board_tier:
+            board_tiers[name] = board_tier
 
     board_lines_by_name: dict[str, list[list[str]]] = {}
     board_codes_by_name: dict[str, set[str]] = {}
@@ -220,6 +239,7 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
             if cell and cell.get("code")
         }
 
+    w_codes = {code for code, card in CARDS.items() if card.card_type == "W"}
     players: dict[str, dict[str, Any]] = {}
     attack_logs: list[dict[str, Any]] = []
     latest_logs: list[dict[str, Any]] = []
@@ -248,10 +268,11 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                 {
                     "id": f"player-{_stable_id(name)}",
                     "name": name,
-                    "tier": row["tier"],
+                    "tier": board_tiers.get(name) or row["tier"],
                     "codes": set(),
+                    "w_codes": set(),
+                    "token_used": 0,
                     "last_update": None,
-                    "token_hold": None,
                     "bingo5_at": None,
                     "full_at": None,
                 },
@@ -269,13 +290,16 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                 review_cards = {}
             if review_cards:
                 approved_codes = [code for code, status in review_cards.items() if status == "approved"]
-                codes = approved_codes
             elif row["review_status"] != "approved":
-                codes = []
+                approved_codes = []
+            else:
+                approved_codes = codes
+            codes = approved_codes
             board_codes = board_codes_by_name.get(name)
             if board_codes:
                 codes = [c for c in codes if c in board_codes]
             player["codes"].update(codes)
+            player["w_codes"].update(code for code in codes if code in w_codes)
 
             if created_at:
                 board_lines = board_lines_by_name.get(name)
@@ -289,8 +313,8 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                     if len(checked & board_codes) >= len(board_codes):
                         player["full_at"] = created_at
 
-            if row["token_hold"] is not None:
-                player["token_hold"] = row["token_hold"]
+            if row["review_status"] == "approved" and row["token_event"] in ("seal", "shield"):
+                player["token_used"] += 1
 
             if row["token_event"] == "seal":
                 attack_logs.append(
@@ -340,6 +364,9 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
         full_at = player.get("full_at")
         bingo5_at_local = bingo5_at.astimezone(tz).isoformat() if bingo5_at else None
         full_at_local = full_at.astimezone(tz).isoformat() if full_at else None
+        earned = len(player.get("w_codes") or [])
+        token_cap = _token_cap(player.get("tier"))
+        tokens = max(0, min(token_cap, earned - (player.get("token_used") or 0)))
         players_out.append(
             {
                 "id": board.get("player_id") if board else player["id"],
@@ -347,7 +374,8 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                 "checked": len(checked_codes),
                 "bingo": bingo,
                 "stars": stars,
-                "tokens": player["token_hold"] or 0,
+                "tokens": tokens,
+                "token_cap": token_cap,
                 "last_update": last_update,
                 "checked_codes": checked_codes,
                 "achievements": {
@@ -360,11 +388,12 @@ def run_publish(*, storage_dir: Path, tz: ZoneInfo, seed: str) -> Path:
                 },
             }
         )
-        if player["token_hold"] is not None:
+        if tokens > 0:
             token_holds.append(
                 {
                     "name": name,
-                    "hold": player["token_hold"],
+                    "hold": tokens,
+                    "cap": token_cap,
                     "event": "status",
                 }
             )

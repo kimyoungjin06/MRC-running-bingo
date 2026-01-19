@@ -224,18 +224,10 @@
                 <label for="tokenEvent">토큰 이벤트</label>
                 <select id="tokenEvent" name="token_event" data-custom-select>
                   <option value="">없음</option>
-                  <option value="earned">토큰 획득</option>
                   <option value="seal">Seal 사용</option>
                   <option value="shield">Shield 사용</option>
                 </select>
-              </div>
-              <div class="field">
-                <label for="tokenHold">현재 토큰 보유</label>
-                <select id="tokenHold" name="token_hold" data-custom-select>
-                  <option value="">미기입</option>
-                  <option value="0">0개</option>
-                  <option value="1">1개</option>
-                </select>
+                <p class="field__help">토큰은 W 카드 달성 시 자동 지급됩니다(초보 1/중수 2/고수 3 상한). 토큰 사용만 제출할 땐 카드 입력을 비워도 됩니다.</p>
               </div>
               <div class="field is-hidden" id="sealTargetField">
                 <label for="sealTarget">Seal 대상</label>
@@ -302,6 +294,6 @@
       </div>
     </footer>
 
-    <script src="./submit.js?v=20260111-2" defer></script>
+    <script src="./submit.js?v=20260111-3" defer></script>
   </body>
 </html>

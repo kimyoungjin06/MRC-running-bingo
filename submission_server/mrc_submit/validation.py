@@ -164,7 +164,10 @@ def evaluate_card(card_code: str, run: RunPayload) -> tuple[ValidationStatus, li
 
     card = CARDS[card_code]
     c = card_code
-    base_status, base_reasons = _check_base_run(run)
+    if card.card_type in ("D", "W"):
+        base_status, base_reasons = "passed", []
+    else:
+        base_status, base_reasons = _check_base_run(run)
     if c == "A10":
         base_status, base_reasons = "passed", []
 

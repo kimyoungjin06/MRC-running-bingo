@@ -160,7 +160,8 @@ function renderTop(data) {
     refs.tokenList,
     data.token_holds || [],
     "보유 현황 없음",
-    (item) => `${item.name} · ${item.hold ?? "-"}개 (${item.event || "상태"})`
+    (item) =>
+      `${item.name} · ${item.hold ?? "-"}개${item.cap ? `/${item.cap}` : ""} (${item.event || "상태"})`
   );
   renderList(
     refs.latestList,
@@ -243,6 +244,7 @@ function renderProgressTable(players, keyword) {
     const checked = getCheckedCount(player);
     const stars = player.stars ?? 0;
     const tokens = player.tokens ?? 0;
+    const tokenCap = player.token_cap ?? null;
     const achievements = player.achievements || {};
     const badges = [];
     if (achievements.first_bingo5) badges.push('<span class="badge badge--first">퍼스트 5빙고</span>');
@@ -258,7 +260,7 @@ function renderProgressTable(players, keyword) {
       <span>${checked}</span>
       <span>${player.bingo ?? 0}</span>
       <span>${stars}</span>
-      <span>${tokens}</span>
+      <span>${tokenCap ? `${tokens}/${tokenCap}` : tokens}</span>
       <span class="progress-badges">${badgeHtml}</span>
       <span>${formatTime(player.last_update || "")}</span>
     `;

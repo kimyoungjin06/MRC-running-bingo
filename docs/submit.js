@@ -232,8 +232,9 @@ function normalizeLabel(value) {
   return `${match[1]}${match[2].padStart(2, "0")}`;
 }
 
-function previewRules(labels) {
+function previewRules(labels, options = {}) {
   const labelPattern = /^[ABCDW]\d{2}$/;
+  const allowEmpty = options.allowEmpty || false;
   const counts = { A: 0, B: 0, C: 0, D: 0, W: 0, "?": 0 };
   const invalid = new Set();
   labels.forEach((label) => {
@@ -248,7 +249,7 @@ function previewRules(labels) {
   });
 
   const warnings = [];
-  if (labels.length === 0) warnings.push("카드 코드(라벨)를 1개 이상 입력하세요.");
+  if (labels.length === 0 && !allowEmpty) warnings.push("카드 코드(라벨)를 1개 이상 입력하세요.");
   if (invalid.size > 0) warnings.push(`카드 코드 형식이 이상해요: ${Array.from(invalid).join(", ")}`);
   if (labels.length > 2) warnings.push("러닝 1회당 최대 2칸까지만 가능해요.");
   if (counts.A > 1) warnings.push("A는 1회당 최대 1칸.");
@@ -293,7 +294,9 @@ function savePlayerFields() {
 
 function renderRulePreview() {
   const labels = collectClaimLabels();
-  const { summary, warnings } = previewRules(labels);
+  const tokenEvent = ($("tokenEvent")?.value || "").trim();
+  const allowEmpty = tokenEvent === "seal" || tokenEvent === "shield";
+  const { summary, warnings } = previewRules(labels, { allowEmpty });
   const el = $("rulePreview");
   if (!el) return;
   if (warnings.length > 0) {
@@ -308,6 +311,7 @@ function updateTokenFields() {
   const showSeal = eventValue === "seal";
   $("sealTargetField").classList.toggle("is-hidden", !showSeal);
   $("sealTypeField").classList.toggle("is-hidden", !showSeal);
+  renderRulePreview();
 }
 
 function renderResult(result) {
@@ -551,6 +555,7 @@ async function handleSubmit(evt) {
 
   const apiBase = normalizeBaseUrl(localStorage.getItem(STORAGE_KEYS.apiBase) || "");
   const submitKey = (localStorage.getItem(STORAGE_KEYS.submitKey) || "").trim();
+  const tokenEvent = ($("tokenEvent")?.value || "").trim();
 
   if (!apiBase) {
     setMessage($("submitMessage"), "먼저 ‘서버 연결’에서 제출 서버 주소를 저장하세요.", "error");
@@ -558,7 +563,8 @@ async function handleSubmit(evt) {
   }
 
   const labels = collectClaimLabels();
-  const { warnings } = previewRules(labels);
+  const allowEmpty = tokenEvent === "seal" || tokenEvent === "shield";
+  const { warnings } = previewRules(labels, { allowEmpty });
   if (warnings.length > 0) {
     setMessage($("submitMessage"), warnings.join(" ") + " (자동 판정은 참고용)", "error");
     return;

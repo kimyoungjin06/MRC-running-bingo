@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
+from .cards import CARDS
+
 
 GAME_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS seasons (
@@ -401,6 +403,47 @@ class Storage:
             return items
         finally:
             con.close()
+
+    def compute_token_balance(self, *, player_name: str, tier: str) -> tuple[int, int, int]:
+        cap = {"beginner": 1, "intermediate": 2, "advanced": 3}.get(tier, 1)
+        w_codes = {code for code, card in CARDS.items() if card.card_type == "W"}
+        earned_codes: set[str] = set()
+        used = 0
+        con = sqlite3.connect(self.db_path)
+        con.row_factory = sqlite3.Row
+        try:
+            rows = con.execute(
+                """
+                SELECT resolved_codes_json, review_cards_json, review_status, token_event
+                FROM submissions
+                WHERE player_name = ?
+                ORDER BY created_at ASC
+                """,
+                (player_name,),
+            ).fetchall()
+            for row in rows:
+                try:
+                    codes = json.loads(row["resolved_codes_json"] or "[]")
+                except json.JSONDecodeError:
+                    codes = []
+                try:
+                    review_cards = json.loads(row["review_cards_json"] or "{}")
+                except json.JSONDecodeError:
+                    review_cards = {}
+                if review_cards:
+                    approved_codes = [code for code, status in review_cards.items() if status == "approved"]
+                elif (row["review_status"] or "") == "approved":
+                    approved_codes = codes
+                else:
+                    approved_codes = []
+                earned_codes.update(code for code in approved_codes if code in w_codes)
+                if (row["review_status"] or "") == "approved" and row["token_event"] in ("seal", "shield"):
+                    used += 1
+        finally:
+            con.close()
+        earned = len(earned_codes)
+        available = max(0, min(cap, earned - used))
+        return available, earned, used
 
     def update_review_status(
         self,
