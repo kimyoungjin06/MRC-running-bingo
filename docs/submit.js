@@ -320,8 +320,26 @@ function updateTokenFields() {
     runFields.querySelectorAll("input, select, textarea").forEach((el) => {
       el.disabled = isTokenOnly;
     });
+    const toggleBtn = $("runFieldsToggle");
+    if (toggleBtn) {
+      toggleBtn.classList.toggle("is-hidden", isTokenOnly);
+      toggleBtn.textContent = runFields.classList.contains("is-hidden")
+        ? "러닝 입력 펼치기"
+        : "러닝 입력 접기";
+    }
   }
   renderRulePreview();
+}
+
+function toggleRunFields() {
+  const runFields = $("runFields");
+  if (!runFields) return;
+  const isHidden = runFields.classList.toggle("is-hidden");
+  runFields.querySelectorAll("input, select, textarea").forEach((el) => {
+    el.disabled = isHidden;
+  });
+  const toggleBtn = $("runFieldsToggle");
+  if (toggleBtn) toggleBtn.textContent = isHidden ? "러닝 입력 펼치기" : "러닝 입력 접기";
 }
 
 function renderResult(result) {
@@ -702,6 +720,7 @@ function init() {
   $("playerName").addEventListener("input", savePlayerFields);
   $("playerName").addEventListener("change", loadBoardPreview);
   $("tokenEvent").addEventListener("change", updateTokenFields);
+  $("runFieldsToggle").addEventListener("click", toggleRunFields);
   $("loadBoardBtn").addEventListener("click", loadBoardPreview);
   document.querySelectorAll(".claim-input").forEach((el) => el.addEventListener("input", renderRulePreview));
   updateTokenFields();
