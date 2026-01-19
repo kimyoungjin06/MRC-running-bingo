@@ -353,8 +353,9 @@ function renderRulePreview() {
 function updateTokenFields() {
   const eventValue = ($("tokenEvent").value || "").trim();
   const showSeal = eventValue === "seal";
+  const showSealType = eventValue === "seal" || eventValue === "shield";
   $("sealTargetField").classList.toggle("is-hidden", !showSeal);
-  $("sealTypeField").classList.toggle("is-hidden", !showSeal);
+  $("sealTypeField").classList.toggle("is-hidden", !showSealType);
   const isTokenOnly = eventValue === "seal" || eventValue === "shield";
   const filesInput = $("files");
   if (filesInput) filesInput.required = !isTokenOnly;
@@ -652,6 +653,10 @@ async function handleSubmit(evt) {
       setMessage($("submitMessage"), "Seal 타입(B/C)을 선택하세요.", "error");
       return;
     }
+  }
+  if (tokenEvent === "shield" && !sealType) {
+    setMessage($("submitMessage"), "Shield로 무효화할 타입(B/C)을 선택하세요.", "error");
+    return;
   }
 
   const fileInput = $("files");
