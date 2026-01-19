@@ -445,7 +445,7 @@ class Storage:
         available = max(0, min(cap, earned - used))
         return available, earned, used
 
-    def get_seal_status(self, *, player_name: str, tz: ZoneInfo) -> dict[str, object] | None:
+    def get_active_seals(self, *, player_name: str, tz: ZoneInfo) -> list[dict[str, object]]:
         con = sqlite3.connect(self.db_path)
         con.row_factory = sqlite3.Row
         try:
@@ -463,19 +463,25 @@ class Storage:
                 (player_name, player_name),
             ).fetchall()
 
-            active = None
+            active: dict[str, dict[str, object]] = {}
             for row in rows:
                 event = (row["token_event"] or "").lower()
                 if event == "seal" and row["seal_target"] == player_name:
-                    active = {
-                        "type": (row["seal_type"] or "").upper(),
-                        "created_at": row["created_at"],
-                        "run_days": set(),
-                    }
+                    seal_type = (row["seal_type"] or "").upper()
+                    if seal_type in ("B", "C") and seal_type not in active:
+                        active[seal_type] = {
+                            "type": seal_type,
+                            "created_at": row["created_at"],
+                            "run_days": set(),
+                        }
                     continue
                 if event == "shield" and row["player_name"] == player_name:
                     if active:
-                        active = None
+                        latest_type = max(
+                            active,
+                            key=lambda t: active[t].get("created_at") or "",
+                        )
+                        active.pop(latest_type, None)
                     continue
 
                 if not active:
@@ -498,18 +504,44 @@ class Storage:
                     except ValueError:
                         run_day = None
                 if run_day:
-                    active["run_days"].add(run_day)
-                if len(active["run_days"]) >= 2:
-                    active = None
+                    for item in active.values():
+                        item["run_days"].add(run_day)
+                    expired = [key for key, item in active.items() if len(item["run_days"]) >= 2]
+                    for key in expired:
+                        active.pop(key, None)
 
-            if not active:
-                return None
-            remaining = max(0, 2 - len(active["run_days"]))
-            return {
-                "type": active["type"],
-                "remaining_runs": remaining,
-                "run_days": sorted(active["run_days"]),
-            }
+            out = []
+            for item in active.values():
+                run_days = sorted(item["run_days"])
+                remaining = max(0, 2 - len(run_days))
+                out.append(
+                    {
+                        "type": item["type"],
+                        "remaining_runs": remaining,
+                        "run_days": run_days,
+                    }
+                )
+            return out
+        finally:
+            con.close()
+
+    def has_pending_or_active_seal(self, *, seal_target: str, seal_type: str) -> bool:
+        con = sqlite3.connect(self.db_path)
+        con.row_factory = sqlite3.Row
+        try:
+            row = con.execute(
+                """
+                SELECT 1
+                FROM submissions
+                WHERE token_event = 'seal'
+                  AND seal_target = ?
+                  AND seal_type = ?
+                  AND review_status IN ('pending', 'approved')
+                LIMIT 1
+                """,
+                (seal_target, seal_type),
+            ).fetchone()
+            return row is not None
         finally:
             con.close()
 

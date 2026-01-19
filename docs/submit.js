@@ -315,11 +315,20 @@ async function loadSealStatus() {
       setMessage(messageEl, "", "info");
       return;
     }
-    const typeLabel = data.type === "B" ? "B(Condition)" : "C(Co-op)";
-    const remaining = data.remaining_runs ?? 2;
+    const seals = Array.isArray(data.seals) ? data.seals : [];
+    if (!seals.length) {
+      setMessage(messageEl, "", "info");
+      return;
+    }
+    const labelMap = { B: "B(Condition)", C: "C(Co-op)" };
+    const parts = seals.map((seal) => {
+      const label = labelMap[seal.type] || seal.type || "?";
+      const remaining = seal.remaining_runs ?? 2;
+      return `${label} ${remaining}회`;
+    });
     setMessage(
       messageEl,
-      `현재 ${typeLabel} 봉인 중입니다. 서로 다른 날짜 기준 ${remaining}회 러닝 동안 해당 타입 카드는 체크할 수 없습니다. 방어 토큰(Shield) 제출을 먼저 해주세요.`,
+      `현재 봉인 중입니다: ${parts.join(", ")}. 서로 다른 날짜 기준 남은 횟수 동안 해당 타입 카드는 체크할 수 없습니다. 방어 토큰(Shield) 제출을 먼저 해주세요.`,
       "error"
     );
   } catch {
@@ -619,6 +628,8 @@ async function handleSubmit(evt) {
   const apiBase = normalizeBaseUrl(localStorage.getItem(STORAGE_KEYS.apiBase) || "");
   const submitKey = (localStorage.getItem(STORAGE_KEYS.submitKey) || "").trim();
   const tokenEvent = ($("tokenEvent")?.value || "").trim();
+  const sealTarget = ($("sealTarget")?.value || "").trim();
+  const sealType = ($("sealType")?.value || "").trim();
 
   if (!apiBase) {
     setMessage($("submitMessage"), "먼저 ‘서버 연결’에서 제출 서버 주소를 저장하세요.", "error");
@@ -631,6 +642,16 @@ async function handleSubmit(evt) {
   if (warnings.length > 0) {
     setMessage($("submitMessage"), warnings.join(" ") + " (자동 판정은 참고용)", "error");
     return;
+  }
+  if (tokenEvent === "seal") {
+    if (!sealTarget) {
+      setMessage($("submitMessage"), "Seal 대상 이름을 입력하세요.", "error");
+      return;
+    }
+    if (!sealType) {
+      setMessage($("submitMessage"), "Seal 타입(B/C)을 선택하세요.", "error");
+      return;
+    }
   }
 
   const fileInput = $("files");

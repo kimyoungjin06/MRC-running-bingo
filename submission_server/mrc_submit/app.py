@@ -1078,17 +1078,10 @@ def create_app() -> FastAPI:
         if not name:
             raise HTTPException(status_code=400, detail="player_name required")
         tz_name = os.getenv("MRC_JOB_TIMEZONE", "Asia/Seoul")
-        status = storage.get_seal_status(player_name=name, tz=ZoneInfo(tz_name))
-        if not status:
-            return JSONResponse(content={"active": False})
-        return JSONResponse(
-            content={
-                "active": True,
-                "type": status.get("type"),
-                "remaining_runs": status.get("remaining_runs"),
-                "run_days": status.get("run_days", []),
-            }
-        )
+        seals = storage.get_active_seals(player_name=name, tz=ZoneInfo(tz_name))
+        if not seals:
+            return JSONResponse(content={"active": False, "seals": []})
+        return JSONResponse(content={"active": True, "seals": seals})
 
     @app.get("/api/v1/boards")
     def boards() -> JSONResponse:
@@ -1276,19 +1269,23 @@ def create_app() -> FastAPI:
         )
 
         tz_name = os.getenv("MRC_JOB_TIMEZONE", "Asia/Seoul")
-        seal_status = storage.get_seal_status(player_name=player_name, tz=ZoneInfo(tz_name))
-        seal_type = seal_status.get("type") if isinstance(seal_status, dict) else None
-        seal_remaining = seal_status.get("remaining_runs") if isinstance(seal_status, dict) else None
+        active_seals = storage.get_active_seals(player_name=player_name, tz=ZoneInfo(tz_name))
+        active_seal_types = {item.get("type") for item in active_seals if item.get("type")}
         seal_blocks = token_event != "shield"
 
         validations: list[dict[str, Any]] = []
         if resolved_codes:
             for label, code in zip(claimed_labels, resolved_codes, strict=False):
                 card = CARDS.get(code)
-                if seal_blocks and seal_type and card and card.card_type == seal_type:
+                if seal_blocks and card and card.card_type in active_seal_types:
+                    seal_info = next(
+                        (item for item in active_seals if item.get("type") == card.card_type),
+                        {},
+                    )
+                    seal_remaining = seal_info.get("remaining_runs")
                     status = "failed"
                     remaining_text = f"{seal_remaining}회" if seal_remaining is not None else "2회"
-                    reasons = [f"Seal 봉인: {seal_type} 타입은 다음 {remaining_text} 러닝 동안 체크 불가"]
+                    reasons = [f"Seal 봉인: {card.card_type} 타입은 다음 {remaining_text} 러닝 동안 체크 불가"]
                 else:
                     status, reasons = evaluate_card(code, payload)
                 validations.append(
@@ -1325,6 +1322,13 @@ def create_app() -> FastAPI:
 
         created_at = utc_now_iso()
         notes = str(form.get("notes") or "").strip() or None
+        if token_event == "seal":
+            if not seal_target:
+                raise HTTPException(status_code=400, detail="Seal 대상이 필요합니다.")
+            if not seal_type:
+                raise HTTPException(status_code=400, detail="Seal 타입(B/C)을 선택하세요.")
+            if storage.has_pending_or_active_seal(seal_target=seal_target, seal_type=seal_type):
+                raise HTTPException(status_code=400, detail="이미 동일 타입 봉인이 진행 중입니다.")
         if token_event in ("seal", "shield"):
             available, _, _ = storage.compute_token_balance(player_name=player_name, tier=tier)
             if available <= 0:
