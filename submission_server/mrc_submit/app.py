@@ -1108,13 +1108,18 @@ def create_app() -> FastAPI:
         return JSONResponse(content=data)
 
     @app.post("/api/v1/submissions")
-    async def submit(request: Request, files: list[UploadFile] = File(...)) -> dict[str, Any]:
+    async def submit(request: Request, files: list[UploadFile] | None = File(None)) -> dict[str, Any]:
         form = await request.form()
         submit_key = (request.headers.get("x-mrc-submit-key") or form.get("submit_key") or "").strip()
         if settings.api_key and submit_key != settings.api_key:
             raise HTTPException(status_code=401, detail="제출 키가 올바르지 않습니다.")
 
-        if not files:
+        token_event = (str(form.get("token_event") or "").strip().lower() or None)
+        if token_event not in (None, "earned", "seal", "shield"):
+            raise HTTPException(status_code=400, detail="token_event 값이 올바르지 않습니다.")
+
+        files = files or []
+        if not files and token_event not in ("seal", "shield"):
             raise HTTPException(status_code=400, detail="스크린샷 파일을 1개 이상 첨부하세요.")
         if len(files) > settings.max_files:
             raise HTTPException(status_code=400, detail=f"파일은 최대 {settings.max_files}개까지 가능합니다.")
@@ -1140,10 +1145,6 @@ def create_app() -> FastAPI:
         seed = (os.getenv("MRC_SEED", DEFAULT_SEED) or DEFAULT_SEED).strip() or DEFAULT_SEED
         map_labels = (os.getenv("MRC_BOARD_LABEL_MAP") or "").strip().lower() in ("1", "true", "yes", "on")
         carddeck_path = Path(os.getenv("MRC_CARDDECK_PATH", str(app.state.base_dir / "CardDeck.md")))
-
-        token_event = (str(form.get("token_event") or "").strip().lower() or None)
-        if token_event not in (None, "earned", "seal", "shield"):
-            raise HTTPException(status_code=400, detail="token_event 값이 올바르지 않습니다.")
 
         claimed_raw = [str(v) for v in form.getlist("claimed_labels")]
         claimed_labels = normalize_claim_labels(_split_csvish(claimed_raw))

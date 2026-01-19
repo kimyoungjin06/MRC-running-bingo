@@ -311,6 +311,8 @@ function updateTokenFields() {
   const showSeal = eventValue === "seal";
   $("sealTargetField").classList.toggle("is-hidden", !showSeal);
   $("sealTypeField").classList.toggle("is-hidden", !showSeal);
+  const filesInput = $("files");
+  if (filesInput) filesInput.required = !(eventValue === "seal" || eventValue === "shield");
   renderRulePreview();
 }
 
@@ -571,7 +573,8 @@ async function handleSubmit(evt) {
   }
 
   const fileInput = $("files");
-  if (!fileInput.files || fileInput.files.length === 0) {
+  const tokenOnly = allowEmpty && labels.length === 0;
+  if (!tokenOnly && (!fileInput.files || fileInput.files.length === 0)) {
     setMessage($("submitMessage"), "스크린샷 파일을 1개 이상 첨부하세요.", "error");
     return;
   }
