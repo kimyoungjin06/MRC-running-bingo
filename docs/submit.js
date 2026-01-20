@@ -84,6 +84,17 @@ function setMessage(el, message, type) {
   el.setAttribute("data-type", type || "info");
 }
 
+function formatNetworkError(err, fallback) {
+  const message = err?.message || "";
+  if (!message || message === "Load failed" || /network error/i.test(message)) {
+    return (
+      fallback ||
+      "서버에 연결할 수 없습니다. 주소/HTTPS/터널 상태를 확인하고 다시 시도하세요."
+    );
+  }
+  return message;
+}
+
 async function loadJsonWithFallback(primaryUrl, fallbackUrl) {
   try {
     const res = await fetch(primaryUrl, { cache: "no-store" });
@@ -746,7 +757,11 @@ async function handleSubmit(evt) {
     renderResult(json);
   } catch (err) {
     $("submitStatus").textContent = "실패";
-    setMessage($("submitMessage"), err?.message || String(err), "error");
+    setMessage(
+      $("submitMessage"),
+      formatNetworkError(err, "제출 실패: 서버 연결이 끊겼습니다. 주소/HTTPS/터널을 확인하세요."),
+      "error"
+    );
   } finally {
     $("submitBtn").disabled = false;
   }
@@ -765,7 +780,11 @@ async function handleSaveConn() {
     setMessage($("connStatus"), "연결 성공", "success");
     loadBoardPreview();
   } catch (err) {
-    setMessage($("connStatus"), err?.message || String(err), "error");
+    setMessage(
+      $("connStatus"),
+      formatNetworkError(err, "연결 실패: 서버 주소/HTTPS/터널 상태를 확인하세요."),
+      "error"
+    );
   } finally {
     $("saveConnBtn").disabled = false;
   }
