@@ -3,7 +3,7 @@ const STORAGE_KEYS = {
   submitKey: "mrc_submit_key",
   playerName: "mrc_submit_player_name",
 };
-const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
+const DEFAULT_API_BASE = "https://clearly-useful-victoria-beds.trycloudflare.com";
 const DEFAULT_BOARDS_URL = "./data/boards.json";
 const DEFAULT_PROGRESS_URL = "./data/progress.json";
 
