@@ -1,5 +1,5 @@
 const DEFAULT_DATA_URL = "./data/progress.json";
-const DEFAULT_API_BASE = "https://payday-congressional-till-exposure.trycloudflare.com";
+const DEFAULT_API_BASE = "https://listing-proceed-rated-pills.trycloudflare.com";
 const DEFAULT_API_URL = `${DEFAULT_API_BASE}/api/v1/progress`;
 const DEFAULT_BOARDS_URL = "./data/boards.json";
 const DEFAULT_BOARDS_API_URL = `${DEFAULT_API_BASE}/api/v1/boards`;
