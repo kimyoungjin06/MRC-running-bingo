@@ -86,7 +86,12 @@ function setMessage(el, message, type) {
 
 function formatNetworkError(err, fallback) {
   const message = err?.message || "";
-  if (!message || message === "Load failed" || /network error/i.test(message)) {
+  if (
+    !message ||
+    message === "Load failed" ||
+    message === "Failed to fetch" ||
+    /network error/i.test(message)
+  ) {
     return (
       fallback ||
       "서버에 연결할 수 없습니다. 주소/HTTPS/터널 상태를 확인하고 다시 시도하세요."
