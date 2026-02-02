@@ -1,4 +1,10 @@
 const PAGES = {
+  final: {
+    title: "최종 결과",
+    file: "final.md",
+    meta: "게임 종료 결과 요약",
+    githubPath: "FinalReport.md",
+  },
   quick: {
     title: "간략",
     file: "quick.md",
