@@ -1,38 +1,41 @@
-# Bingo Game Final Report
+# 🏁 최종 결과
 
-- Generated at: 2026-01-31T20:42:27.140358+09:00
-- Total players: 21
-- Total checked cells: 201
-- Total stars: 325
+> 생성 시각: **2026-01-31T20:42:27.140358+09:00**
 
-## Top Progress (by checked cells)
+## ✨ 요약
 
-| Rank | Name | Checked | Bingo | Stars |
-| --- | --- | --- | --- | --- |
+| 참가자 | 체크 | 별 |
+| ---: | ---: | ---: |
+| 21 | 201 | 325 |
+
+## 🏆 진행도 TOP 5
+
+| 순위 | 이름 | 체크 | 빙고 | 별 |
+| ---: | --- | ---: | ---: | ---: |
 | 1 | 유경균 | 24 | 9 | 45 |
 | 2 | 문대인 | 24 | 8 | 40 |
 | 3 | 박종혁 | 22 | 7 | 37 |
 | 4 | 유상준 | 20 | 5 | 36 |
 | 5 | 석쓰리 | 15 | 2 | 23 |
 
-## Achievements
+## 🎯 업적
 
-- 5 Bingo Achievers: 박종혁, 문대인, 유경균, 유상준
-- Full Bingo Achievers: -
-- First 5 Bingo: 박종혁
-- First Full Bingo: -
+- **5빙고 달성**: 박종혁, 문대인, 유경균, 유상준
+- **올빙고 달성**: -
+- **퍼스트 5빙고**: 박종혁
+- **퍼스트 올빙고**: -
 
-## Token Holds (current)
+## 🪙 토큰 보유 현황
 
-| Name | Tokens | Cap |
-| --- | --- | --- |
+| 이름 | 보유 | 상한 |
+| --- | ---: | ---: |
 | 박종혁 | 1 | 2 |
 | 유경균 | 2 | 3 |
 | 유상준 | 1 | 3 |
 
-- Max tokens held: 2 by 유경균
+---
 
-## Notes
-
-- Token totals are calculated from approved W cards and approved Seal/Shield usage (tier caps applied).
-- Seal duration uses two distinct run dates (same-day multiple runs count as one).
+### 📌 계산 기준
+- 토큰은 **승인된 W 카드** 기준으로 자동 누적됩니다.
+- 토큰 사용(Seal/Shield)도 승인된 건만 차감됩니다.
+- Seal 기간은 **서로 다른 날짜 기준 2회 러닝**입니다.
