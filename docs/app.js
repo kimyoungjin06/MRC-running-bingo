@@ -62,6 +62,10 @@ function markdownToHtml(md) {
   let codeLang = "";
   let listStack = null; // {type: 'ul'|'ol'}
   let blockquote = false;
+  let inTable = false;
+  let tableHeader = [];
+  let tableAlign = [];
+  let tableRows = [];
 
   function closeList() {
     if (!listStack) return;
@@ -73,6 +77,28 @@ function markdownToHtml(md) {
     if (!blockquote) return;
     out.push("</blockquote>");
     blockquote = false;
+  }
+
+  function flushTable() {
+    if (!inTable) return;
+    const headerCells = tableHeader.map((c, i) => {
+      const align = tableAlign[i];
+      const style = align ? ` style="text-align:${align}"` : "";
+      return `<th${style}>${renderInline(c)}</th>`;
+    });
+    const bodyRows = tableRows.map((row) => {
+      const cells = row.map((c, i) => {
+        const align = tableAlign[i];
+        const style = align ? ` style="text-align:${align}"` : "";
+        return `<td${style}>${renderInline(c)}</td>`;
+      });
+      return `<tr>${cells.join("")}</tr>`;
+    });
+    out.push(`<table><thead><tr>${headerCells.join("")}</tr></thead><tbody>${bodyRows.join("")}</tbody></table>`);
+    inTable = false;
+    tableHeader = [];
+    tableAlign = [];
+    tableRows = [];
   }
 
   let paragraph = [];
@@ -115,6 +141,7 @@ function markdownToHtml(md) {
 
     if (/^\s*$/.test(line)) {
       flushParagraph();
+      flushTable();
       closeList();
       closeBlockquote();
       continue;
@@ -132,6 +159,7 @@ function markdownToHtml(md) {
     const heading = /^(#{1,6})\s+(.+)$/.exec(line);
     if (heading) {
       flushParagraph();
+      flushTable();
       closeList();
       closeBlockquote();
       const level = heading[1].length;
@@ -142,6 +170,7 @@ function markdownToHtml(md) {
     const bq = /^>\s?(.*)$/.exec(line);
     if (bq) {
       flushParagraph();
+      flushTable();
       closeList();
       if (!blockquote) {
         out.push("<blockquote>");
@@ -151,10 +180,50 @@ function markdownToHtml(md) {
       continue;
     }
 
+    if (line.includes("|")) {
+      const next = lines[i + 1] || "";
+      const isHeader = line.trim().startsWith("|") && line.trim().endsWith("|");
+      const isDivider = /^\s*\|?[\s:-]+\|[\s|:-]*$/.test(next);
+      if (!inTable && isHeader && isDivider) {
+        flushParagraph();
+        closeList();
+        closeBlockquote();
+        tableHeader = line
+          .trim()
+          .replace(/^\||\|$/g, "")
+          .split("|")
+          .map((c) => c.trim());
+        tableAlign = next
+          .trim()
+          .replace(/^\||\|$/g, "")
+          .split("|")
+          .map((c) => {
+            const cell = c.trim();
+            if (cell.startsWith(":") && cell.endsWith(":")) return "center";
+            if (cell.endsWith(":")) return "right";
+            if (cell.startsWith(":")) return "left";
+            return "";
+          });
+        inTable = true;
+        i += 1;
+        continue;
+      }
+      if (inTable) {
+        const row = line
+          .trim()
+          .replace(/^\||\|$/g, "")
+          .split("|")
+          .map((c) => c.trim());
+        tableRows.push(row);
+        continue;
+      }
+    }
+
     const ul = /^-\s+(.+)$/.exec(line);
     const ol = /^(\d+)[.)]\s+(.+)$/.exec(line);
     if (ul || ol) {
       flushParagraph();
+      flushTable();
       closeBlockquote();
       const type = ul ? "ul" : "ol";
       const itemText = ul ? ul[1] : ol[2];
@@ -171,6 +240,7 @@ function markdownToHtml(md) {
   }
 
   flushParagraph();
+  flushTable();
   closeList();
   closeBlockquote();
 
